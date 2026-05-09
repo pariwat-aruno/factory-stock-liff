@@ -53,7 +53,11 @@ async function boot() {
     btn.addEventListener('click', () => navigate(btn.dataset.page));
   });
 
-  navigate('balance');
+  // เปิด tab ตาม ?tab= ถ้ามี (Rich Menu deep link)
+  const params = new URLSearchParams(location.search);
+  const wanted = params.get('tab');
+  const start = (wanted && PAGES[wanted]) ? wanted : 'balance';
+  navigate(start);
 }
 
 export function navigate(page) {
