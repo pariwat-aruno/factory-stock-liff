@@ -17,10 +17,10 @@
     },
     {
       "parameters": {
-        "jsCode": "// payload จาก Apps Script: {item_id, ชื่อ, หน่วย, balance, ขั้นต่ำ}\nconst d = $input.first().json.body || $input.first().json;\nconst text = `🔔 ใกล้หมด\\n${d['ชื่อ']} (${d.item_id})\\nคงเหลือ ${d.balance} ${d['หน่วย']}\\nขั้นต่ำ ${d['ขั้นต่ำ']} ${d['หน่วย']}`;\nreturn [{ json: { text } }];"
+        "jsCode": "// payload จาก Apps Script: {item_id, ชื่อ, หน่วย, balance, ขั้นต่ำ}\n// — รวม body request ของ LINE push เป็น string แล้วในนี้เลย\n// — กัน n8n JSON validator ปัญหากับ \\n ใน text\nconst OWNER_USERID = 'REPLACE_WITH_OWNER_USERID'; // ⬅ แก้ตรงนี้\n\nconst d = $input.first().json.body || $input.first().json;\nconst text = `🔔 ใกล้หมด\\n${d['ชื่อ']} (${d.item_id})\\nคงเหลือ ${d.balance} ${d['หน่วย']}\\nขั้นต่ำ ${d['ขั้นต่ำ']} ${d['หน่วย']}`;\n\nconst body = JSON.stringify({\n  to: OWNER_USERID,\n  messages: [{ type: 'text', text }],\n});\n\nreturn [{ json: { body } }];"
       },
       "id": "format-1",
-      "name": "Format message",
+      "name": "Build LINE body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [460, 300]
@@ -38,8 +38,8 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "{\n  \"to\": \"REPLACE_WITH_OWNER_USERID\",\n  \"messages\": [{ \"type\": \"text\", \"text\": \"{{ $json.text }}\" }]\n}",
+        "specifyBody": "string",
+        "body": "={{ $json.body }}",
         "options": {}
       },
       "id": "line-1",
@@ -53,8 +53,8 @@
     }
   ],
   "connections": {
-    "Webhook (low stock)": { "main": [[{ "node": "Format message", "type": "main", "index": 0 }]] },
-    "Format message":     { "main": [[{ "node": "LINE push",      "type": "main", "index": 0 }]] }
+    "Webhook (low stock)": { "main": [[{ "node": "Build LINE body", "type": "main", "index": 0 }]] },
+    "Build LINE body":     { "main": [[{ "node": "LINE push",       "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1", "timezone": "Asia/Bangkok" }
 }

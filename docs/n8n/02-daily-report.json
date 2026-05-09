@@ -38,10 +38,10 @@
     },
     {
       "parameters": {
-        "jsCode": "// format report เป็น text สำหรับ LINE\nconst r = $input.first().json;\nif (!r.ok) return [{ json: { text: '⚠️ Daily report error: ' + (r.error || 'unknown') } }];\nconst now = new Date(r.generated_at);\nconst date = now.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day:'numeric', month:'short' });\n\nconst lines = [`📊 รายงานสต็อก ${date}`, ''];\nr.categories.forEach(cat => {\n  lines.push(`▸ ${cat.category}`);\n  cat.items.forEach(it => {\n    const flag = it.isLow ? ' ⚠️' : '';\n    lines.push(`   ${it['ชื่อ']}: ${it.balance} ${it['หน่วย']}${flag}`);\n  });\n  if (cat.total_value != null) lines.push(`   มูลค่ารวม: ${cat.total_value.toLocaleString()} บาท`);\n  lines.push('');\n});\n\nif (r.low_items.length) {\n  lines.push(`⚠️ ใกล้หมด ${r.low_items.length} รายการ`);\n}\n\nreturn [{ json: { text: lines.join('\\n').trim() } }];"
+        "jsCode": "// format report + รวม LINE body เป็น string ไว้เลย\nconst OWNER_USERID = 'REPLACE_WITH_OWNER_USERID'; // ⬅ แก้ตรงนี้\n\nconst r = $input.first().json;\nlet text;\nif (!r.ok) {\n  text = '⚠️ Daily report error: ' + (r.error || 'unknown');\n} else {\n  const now = new Date(r.generated_at);\n  const date = now.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day:'numeric', month:'short' });\n  const lines = [`📊 รายงานสต็อก ${date}`, ''];\n  r.categories.forEach(cat => {\n    lines.push(`▸ ${cat.category}`);\n    cat.items.forEach(it => {\n      const flag = it.isLow ? ' ⚠️' : '';\n      lines.push(`   ${it['ชื่อ']}: ${it.balance} ${it['หน่วย']}${flag}`);\n    });\n    if (cat.total_value != null) lines.push(`   มูลค่ารวม: ${cat.total_value.toLocaleString()} บาท`);\n    lines.push('');\n  });\n  if (r.low_items.length) lines.push(`⚠️ ใกล้หมด ${r.low_items.length} รายการ`);\n  text = lines.join('\\n').trim();\n}\n\nconst body = JSON.stringify({\n  to: OWNER_USERID,\n  messages: [{ type: 'text', text }],\n});\nreturn [{ json: { body } }];"
       },
       "id": "format-1",
-      "name": "Format report",
+      "name": "Build LINE body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [600, 300]
@@ -59,8 +59,8 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "{\n  \"to\": \"REPLACE_WITH_OWNER_USERID\",\n  \"messages\": [{ \"type\": \"text\", \"text\": \"{{ $json.text }}\" }]\n}",
+        "specifyBody": "string",
+        "body": "={{ $json.body }}",
         "options": {}
       },
       "id": "line-1",
@@ -75,8 +75,8 @@
   ],
   "connections": {
     "Daily 18:00":         { "main": [[{ "node": "Fetch dailyReport", "type": "main", "index": 0 }]] },
-    "Fetch dailyReport":   { "main": [[{ "node": "Format report",     "type": "main", "index": 0 }]] },
-    "Format report":       { "main": [[{ "node": "LINE push",         "type": "main", "index": 0 }]] }
+    "Fetch dailyReport":   { "main": [[{ "node": "Build LINE body",   "type": "main", "index": 0 }]] },
+    "Build LINE body":     { "main": [[{ "node": "LINE push",         "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1", "timezone": "Asia/Bangkok" }
 }
