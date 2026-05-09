@@ -39,7 +39,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"to\": \"REPLACE_WITH_OWNER_USERID\",\n  \"messages\": [{ \"type\": \"text\", \"text\": $json.text }]\n}",
+        "jsonBody": "{\n  \"to\": \"REPLACE_WITH_OWNER_USERID\",\n  \"messages\": [{ \"type\": \"text\", \"text\": \"{{ $json.text }}\" }]\n}",
         "options": {}
       },
       "id": "line-1",
