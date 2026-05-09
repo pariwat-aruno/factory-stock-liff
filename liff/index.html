@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>สต็อกโรงงาน</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header id="topbar">
+    <div id="brand">📦 สต็อก</div>
+    <div id="user-chip" class="muted">…</div>
+  </header>
+
+  <main id="page">
+    <div id="loading">กำลังโหลด…</div>
+  </main>
+
+  <nav id="tabbar">
+    <button class="tab" data-page="stockIn">รับเข้า</button>
+    <button class="tab" data-page="stockOut">เบิก</button>
+    <button class="tab" data-page="balance">ยอด</button>
+    <button class="tab admin-only" data-page="admin" hidden>Admin</button>
+  </nav>
+
+  <div id="toast" hidden></div>
+
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
