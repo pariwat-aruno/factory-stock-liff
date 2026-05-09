@@ -1,0 +1,82 @@
+{
+  "name": "factory-stock — daily report 18:00",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 18 * * *" }
+          ]
+        }
+      },
+      "id": "cron-1",
+      "name": "Daily 18:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://script.google.com/macros/s/AKfycbz31uqRMAtGeMShTJr9pnbCo8_DwWNCk12dZPtkxd5wGXzvcT_2C79BhNid-3rIz6pvGw/exec",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "action", "value": "dailyReport" },
+            { "name": "secret", "value": "REPLACE_WITH_N8N_SECRET" }
+          ]
+        },
+        "options": {
+          "redirect": { "redirect": { "followRedirects": true, "maxRedirects": 5 } }
+        }
+      },
+      "id": "http-1",
+      "name": "Fetch dailyReport",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// format report เป็น text สำหรับ LINE\nconst r = $input.first().json;\nif (!r.ok) return [{ json: { text: '⚠️ Daily report error: ' + (r.error || 'unknown') } }];\nconst now = new Date(r.generated_at);\nconst date = now.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day:'numeric', month:'short' });\n\nconst lines = [`📊 รายงานสต็อก ${date}`, ''];\nr.categories.forEach(cat => {\n  lines.push(`▸ ${cat.category}`);\n  cat.items.forEach(it => {\n    const flag = it.isLow ? ' ⚠️' : '';\n    lines.push(`   ${it['ชื่อ']}: ${it.balance} ${it['หน่วย']}${flag}`);\n  });\n  if (cat.total_value != null) lines.push(`   มูลค่ารวม: ${cat.total_value.toLocaleString()} บาท`);\n  lines.push('');\n});\n\nif (r.low_items.length) {\n  lines.push(`⚠️ ใกล้หมด ${r.low_items.length} รายการ`);\n}\n\nreturn [{ json: { text: lines.join('\\n').trim() } }];"
+      },
+      "id": "format-1",
+      "name": "Format report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"to\": \"REPLACE_WITH_OWNER_USERID\",\n  \"messages\": [{ \"type\": \"text\", \"text\": $json.text }]\n}",
+        "options": {}
+      },
+      "id": "line-1",
+      "name": "LINE push",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 300],
+      "credentials": {
+        "httpHeaderAuth": { "id": "REPLACE_CREDENTIAL_ID", "name": "LINE Messaging API" }
+      }
+    }
+  ],
+  "connections": {
+    "Daily 18:00":         { "main": [[{ "node": "Fetch dailyReport", "type": "main", "index": 0 }]] },
+    "Fetch dailyReport":   { "main": [[{ "node": "Format report",     "type": "main", "index": 0 }]] },
+    "Format report":       { "main": [[{ "node": "LINE push",         "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "Asia/Bangkok" }
+}
