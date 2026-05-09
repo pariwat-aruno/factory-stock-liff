@@ -104,5 +104,8 @@ function handleCancelTransaction_(lineUserId, body) {
   return ok_(cancelTransaction_(user, body));
 }
 
-// stub (B7)
-function handleDailyReport_(secret) { requireN8nSecret_(secret); return err_('not implemented'); }
+// ----- B7 dailyReport -----
+function handleDailyReport_(secret) {
+  requireN8nSecret_(secret);
+  return ok_(dailyReport_());
+}
