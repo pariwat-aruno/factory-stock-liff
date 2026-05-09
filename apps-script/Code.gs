@@ -68,13 +68,27 @@ function handleMe_(lineUserId) {
   return ok_({ user: user });
 }
 
-// stubs (จะ implement ใน B5–B8)
-function handleListItems_(lineUserId, category) { requireUser_(lineUserId); return err_('not implemented'); }
+// ----- B5 items -----
+function handleListItems_(lineUserId, category) {
+  requireUser_(lineUserId);
+  return ok_({ items: listItems_(category) });
+}
+function handleCreateItem_(lineUserId, body) {
+  requireOwner_(lineUserId);
+  return ok_({ item: createItem_(body) });
+}
+function handleUpdateItemPrice_(lineUserId, body) {
+  requireOwner_(lineUserId);
+  return ok_({ item: updateItemPrice_(body) });
+}
+function handleArchiveItem_(lineUserId, body) {
+  requireOwner_(lineUserId);
+  return ok_({ item: archiveItem_(body) });
+}
+
+// stubs (B6–B8)
 function handleBalance_(lineUserId, category)   { requireUser_(lineUserId); return err_('not implemented'); }
 function handleDailyReport_(secret)             { requireN8nSecret_(secret); return err_('not implemented'); }
-function handleCreateItem_(lineUserId, body)    { requireOwner_(lineUserId); return err_('not implemented'); }
-function handleUpdateItemPrice_(lineUserId, body) { requireOwner_(lineUserId); return err_('not implemented'); }
-function handleArchiveItem_(lineUserId, body)   { requireOwner_(lineUserId); return err_('not implemented'); }
 function handleStockIn_(lineUserId, body)       { requireUser_(lineUserId); return err_('not implemented'); }
 function handleStockOut_(lineUserId, body)      { requireUser_(lineUserId); return err_('not implemented'); }
 function handleCancelTransaction_(lineUserId, body) { requireUser_(lineUserId); return err_('not implemented'); }

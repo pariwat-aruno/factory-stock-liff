@@ -26,6 +26,7 @@ build/
 
 # Local secrets (กันพลาด)
 secrets.json
+scripts/.api-url
 *.key
 *.pem
 config.local.*
