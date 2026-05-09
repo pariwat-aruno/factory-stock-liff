@@ -2,6 +2,18 @@
  * Utility helpers — sheet access, response builders, logger
  */
 
+// helper สำหรับ trigger OAuth consent ตอน scope เปลี่ยน
+// รันใน editor 1 ครั้ง → จะขอ permission ทุก scope ที่ใช้ (Sheet + Drive + UrlFetch)
+function authorize() {
+  const folder = DriveApp.getFolderById(prop_('DRIVE_FOLDER_ID'));
+  // เขียนไฟล์ทดสอบ + ลบทันที เพื่อ trigger drive scope (เขียน) ไม่ใช่แค่ readonly
+  const tempFile = folder.createFile(Utilities.newBlob('auth-check', 'text/plain', '_authcheck.txt'));
+  tempFile.setTrashed(true);
+  SpreadsheetApp.openById(prop_('SHEET_ID')).getSheets()[0].getName();
+  UrlFetchApp.getRequest('https://example.com', {});
+  return 'authorized — scopes ok';
+}
+
 // อ่าน Script Property หรือ throw ถ้าไม่ได้ตั้ง
 function prop_(key) {
   const v = PropertiesService.getScriptProperties().getProperty(key);

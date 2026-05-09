@@ -86,9 +86,23 @@ function handleArchiveItem_(lineUserId, body) {
   return ok_({ item: archiveItem_(body) });
 }
 
-// stubs (B6–B8)
-function handleBalance_(lineUserId, category)   { requireUser_(lineUserId); return err_('not implemented'); }
-function handleDailyReport_(secret)             { requireN8nSecret_(secret); return err_('not implemented'); }
-function handleStockIn_(lineUserId, body)       { requireUser_(lineUserId); return err_('not implemented'); }
-function handleStockOut_(lineUserId, body)      { requireUser_(lineUserId); return err_('not implemented'); }
-function handleCancelTransaction_(lineUserId, body) { requireUser_(lineUserId); return err_('not implemented'); }
+// ----- B6 stock + balance + cancel -----
+function handleBalance_(lineUserId, category) {
+  requireUser_(lineUserId);
+  return ok_({ balance: getBalance_(category) });
+}
+function handleStockIn_(lineUserId, body) {
+  requireUser_(lineUserId);
+  return ok_(stockIn_(lineUserId, body));
+}
+function handleStockOut_(lineUserId, body) {
+  requireUser_(lineUserId);
+  return ok_(stockOut_(lineUserId, body));
+}
+function handleCancelTransaction_(lineUserId, body) {
+  const user = requireUser_(lineUserId);
+  return ok_(cancelTransaction_(user, body));
+}
+
+// stub (B7)
+function handleDailyReport_(secret) { requireN8nSecret_(secret); return err_('not implemented'); }
