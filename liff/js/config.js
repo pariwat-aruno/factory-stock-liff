@@ -3,7 +3,7 @@
 // API_URL คือ Web App URL ของ Apps Script (ลงท้าย /exec)
 
 export const CONFIG = {
-  LIFF_ID: 'REPLACE_WITH_LIFF_ID',
+  LIFF_ID: '2010026617-i9TGbuOF',
   API_URL: 'https://script.google.com/macros/s/AKfycbz31uqRMAtGeMShTJr9pnbCo8_DwWNCk12dZPtkxd5wGXzvcT_2C79BhNid-3rIz6pvGw/exec',
 
   // dev mode — ถ้า true จะ mock LIFF (ใช้ test ใน browser ปกติได้)
