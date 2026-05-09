@@ -22,8 +22,23 @@ async function boot() {
     const me = await api.me();
     state.user = me.user;
   } catch (e) {
-    document.getElementById('page').innerHTML =
-      `<div class="card center"><h3>เปิดแอปไม่สำเร็จ</h3><p class="muted">${e.message}</p></div>`;
+    const uid = state.lineUserId || '(ยังไม่ทราบ)';
+    document.getElementById('page').innerHTML = `
+      <div class="card center">
+        <h3>เปิดแอปไม่สำเร็จ</h3>
+        <p class="muted">${e.message}</p>
+        <hr>
+        <p class="muted">LINE User ID ของคุณ:</p>
+        <code style="display:block;background:#f0f0f0;padding:10px;border-radius:6px;
+          word-break:break-all;font-size:13px;user-select:all">${uid}</code>
+        <button class="btn secondary" style="margin-top:12px"
+          onclick="navigator.clipboard.writeText('${uid}').then(()=>this.textContent='คัดลอกแล้ว ✓')">
+          คัดลอก ID
+        </button>
+        <p class="muted" style="margin-top:12px;font-size:13px">
+          ส่ง ID นี้ให้เจ้าของ → ใส่ใน Sheet "Users" → เปิดแอปอีกครั้ง
+        </p>
+      </div>`;
     return;
   }
 
