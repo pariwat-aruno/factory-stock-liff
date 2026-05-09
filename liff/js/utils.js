@@ -43,9 +43,9 @@ function loadImage(src) {
 }
 
 // helper สร้าง element + ใส่ attr/children สั้นๆ
-export function el(tag, props = {}, ...children) {
+export function el(tag, props, ...children) {
   const node = document.createElement(tag);
-  for (const [k, v] of Object.entries(props)) {
+  for (const [k, v] of Object.entries(props || {})) {
     if (k === 'class')         node.className = v;
     else if (k === 'html')     node.innerHTML = v;
     else if (k.startsWith('on')) node.addEventListener(k.slice(2).toLowerCase(), v);
