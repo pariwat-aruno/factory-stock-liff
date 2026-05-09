@@ -23,6 +23,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Cache-bust .js imports with commit SHA
+        run: |
+          SHA="${GITHUB_SHA::8}"
+          cd liff
+          # ใส่ ?v=<sha> หลัง .js ใน import statement + script src
+          # match: .js' / .js" — กัน LINE webview cache
+          find . -type f \( -name "*.html" -o -name "*.js" \) \
+            -exec sed -i "s|\.js\"|.js?v=${SHA}\"|g; s|\.js'|.js?v=${SHA}'|g" {} +
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
