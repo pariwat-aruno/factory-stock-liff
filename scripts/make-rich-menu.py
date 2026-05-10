@@ -9,11 +9,11 @@ W, H = 2500, 1686
 CELL_W, CELL_H = W // 2, H // 2
 
 CELLS = [
-    # (col, row, color, icon, label)
-    (0, 0, '#06c755', '📥', 'รับเข้า'),
-    (1, 0, '#fb923c', '📤', 'เบิก'),
-    (0, 1, '#3b82f6', '📊', 'ยอดคงเหลือ'),
-    (1, 1, '#a855f7', '⚙️', 'Admin'),
+    # (col, row, color, icon, label) — cherry red + white theme
+    (0, 0, '#c8102e', '📥', 'รับเข้า'),
+    (1, 0, '#ffffff', '📤', 'เบิก'),
+    (0, 1, '#ffffff', '📊', 'ยอดคงเหลือ'),
+    (1, 1, '#c8102e', '⚙️', 'Admin'),
 ]
 
 def find_thai_font():
@@ -56,10 +56,13 @@ def main():
         y0 = row * CELL_H
         x1 = x0 + CELL_W
         y1 = y0 + CELL_H
+        is_red = color.lower() == '#c8102e'
+        text_color = '#ffffff' if is_red else '#c8102e'  # invert: white cells = red text
+        sep_color = '#c8102e'  # red separator on both
         # background
         draw.rectangle([x0, y0, x1, y1], fill=color)
-        # white separator
-        draw.rectangle([x0, y0, x1, y1], outline='#ffffff', width=10)
+        # red separator
+        draw.rectangle([x0, y0, x1, y1], outline=sep_color, width=10)
 
         # icon (centered, upper area)
         icon_y = y0 + CELL_H // 2 - 200
@@ -68,12 +71,12 @@ def main():
         try:
             draw.text(((x0 + x1) // 2 - iw // 2, icon_y), icon, font=emoji_font, embedded_color=True)
         except Exception:
-            draw.text(((x0 + x1) // 2 - iw // 2, icon_y), icon, font=emoji_font, fill='white')
+            draw.text(((x0 + x1) // 2 - iw // 2, icon_y), icon, font=emoji_font, fill=text_color)
 
-        # label (white, below icon)
+        # label (below icon)
         lbox = draw.textbbox((0, 0), label, font=label_font)
         lw = lbox[2] - lbox[0]
-        draw.text(((x0 + x1) // 2 - lw // 2, y0 + CELL_H // 2 + 80), label, font=label_font, fill='white')
+        draw.text(((x0 + x1) // 2 - lw // 2, y0 + CELL_H // 2 + 80), label, font=label_font, fill=text_color)
 
     out = sys.argv[1] if len(sys.argv) > 1 else 'rich-menu.png'
     img.save(out, 'PNG', optimize=True)

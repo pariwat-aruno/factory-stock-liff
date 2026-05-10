@@ -1,14 +1,15 @@
 :root {
-  --bg: #f5f5f7;
-  --card: #fff;
-  --border: #e2e2e6;
+  --bg: #fff5f6;
+  --card: #ffffff;
+  --border: #f0d4d8;
   --text: #1f1f23;
-  --muted: #6b6b73;
-  --primary: #06c755;
-  --primary-dark: #04a648;
-  --danger: #e53935;
+  --muted: #8a6b6f;
+  --primary: #c8102e;       /* cherry red */
+  --primary-dark: #9b0c24;
+  --primary-light: #fde8eb;
+  --danger: #b3001b;
   --warning: #f59e0b;
-  --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 12px rgba(0,0,0,.04);
+  --shadow: 0 1px 2px rgba(200,16,46,.06), 0 4px 12px rgba(200,16,46,.05);
 }
 
 * { box-sizing: border-box; }
@@ -26,9 +27,9 @@ button { font-family: inherit; font-size: inherit; }
   position: sticky; top: 0; z-index: 10;
   display: flex; justify-content: space-between; align-items: center;
   padding: 12px 16px; background: var(--card);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 2px solid var(--primary);
 }
-#brand { font-weight: 700; font-size: 18px; }
+#brand { font-weight: 700; font-size: 18px; color: var(--primary); }
 #user-chip { font-size: 13px; color: var(--muted); }
 
 #page { padding: 16px; min-height: calc(100vh - 116px); }
@@ -78,8 +79,8 @@ button.btn.danger    { background: var(--danger); }
   display: inline-block; padding: 2px 8px; border-radius: 10px;
   font-size: 12px; font-weight: 600;
 }
-.badge.low { background: #fde8e8; color: var(--danger); }
-.badge.ok  { background: #e6f7ec; color: var(--primary-dark); }
+.badge.low { background: var(--primary-light); color: var(--primary-dark); }
+.badge.ok  { background: #f4f4f5; color: #555; }
 
 .preview-img {
   max-width: 100%; max-height: 200px; border-radius: 10px;
