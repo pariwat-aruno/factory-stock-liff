@@ -6,7 +6,7 @@ const APP_MODE = (document.body && document.body.dataset.mode) || 'staff';
 
 const LIFF_IDS = {
   staff: '2010026617-i9TGbuOF',
-  admin: 'REPLACE_WITH_ADMIN_LIFF_ID',
+  admin: '2010026617-Fok8auIP',
 };
 
 // แสดง tab ตาม mode
