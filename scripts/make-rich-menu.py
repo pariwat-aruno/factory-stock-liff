@@ -1,26 +1,41 @@
 #!/usr/bin/env python3
-"""สร้างรูป Rich Menu 2x2 (2500x1686) PNG สำหรับ LINE OA — ธีม VORDA cherry+gold"""
+"""สร้างรูป Rich Menu PNG สำหรับ LINE OA — ธีม VORDA cherry+gold
+
+Usage:
+  python3 make-rich-menu.py <out.png> [admin|staff]
+    admin (default) = 2x2 4 cells (Large 2500x1686)
+    staff = 1x2 2 cells (Compact 2500x843)
+"""
 
 from PIL import Image, ImageDraw, ImageFont
 import os, sys
 
-# Layout 2x2 ตาม spec LINE Large = 2500x1686 (cell 1250x843)
-W, H = 2500, 1686
-CELL_W, CELL_H = W // 2, H // 2
+MODE = sys.argv[2] if len(sys.argv) > 2 else 'admin'
+
+if MODE == 'staff':
+    # Compact 2500x843 — 2 cells side by side
+    W, H = 2500, 843
+    CELL_W, CELL_H = W // 2, H
+    CELLS = [
+        (0, 0, '📥', 'รับเข้า'),
+        (1, 0, '📤', 'เบิก'),
+    ]
+else:
+    # Large 2500x1686 — 2x2 grid
+    W, H = 2500, 1686
+    CELL_W, CELL_H = W // 2, H // 2
+    CELLS = [
+        (0, 0, '📥', 'รับเข้า'),
+        (1, 0, '📤', 'เบิก'),
+        (0, 1, '📊', 'ยอดคงเหลือ'),
+        (1, 1, '⚙️', 'Admin'),
+    ]
 
 # สี ตาม brand VORDA
 CHERRY = '#a80020'   # cherry red เข้ม (เหมือน bg ของ logo)
 GOLD = '#d4af37'     # gold metallic
 GOLD_DARK = '#a07a1f'
 WHITE = '#ffffff'
-
-CELLS = [
-    # (col, row, icon, label)
-    (0, 0, '📥', 'รับเข้า'),
-    (1, 0, '📤', 'เบิก'),
-    (0, 1, '📊', 'ยอดคงเหลือ'),
-    (1, 1, '⚙️', 'Admin'),
-]
 
 def find_thai_font():
     for p in [
@@ -49,10 +64,11 @@ def main():
     label_font = ImageFont.truetype(thai_path, 140)
     emoji_font = ImageFont.truetype(emoji_path, 160) if emoji_path else label_font
 
-    # gold separator ระหว่าง cell (กลางแนวตั้ง + แนวนอน)
+    # gold separator ระหว่าง cell
     sep_w = 8
     draw.rectangle([CELL_W - sep_w//2, 0, CELL_W + sep_w//2, H], fill=GOLD)
-    draw.rectangle([0, CELL_H - sep_w//2, W, CELL_H + sep_w//2], fill=GOLD)
+    if MODE != 'staff':
+        draw.rectangle([0, CELL_H - sep_w//2, W, CELL_H + sep_w//2], fill=GOLD)
 
     # gold border ทั้งภาพ
     border_w = 12
