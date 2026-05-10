@@ -41,6 +41,21 @@ async function boot() {
     return;
   }
 
+  // ถ้าเปิด admin LIFF แต่ไม่ใช่เจ้าของ → block
+  if (CONFIG.MODE === 'admin' && state.user.role !== 'เจ้าของ') {
+    document.getElementById('page').innerHTML = `
+      <div class="card center">
+        <h3>ส่วนนี้สำหรับเจ้าของเท่านั้น</h3>
+        <p class="muted">คุณ login เป็น <b>${state.user['ชื่อ']}</b> (${state.user.role})</p>
+        <hr>
+        <p class="muted">กลับไปใช้แอปสำหรับพนักงาน</p>
+        <a class="btn" href="https://liff.line.me/2010026617-i9TGbuOF" style="text-decoration:none;display:block">
+          เปิดแอปพนักงาน
+        </a>
+      </div>`;
+    return;
+  }
+
   document.getElementById('user-chip').textContent =
     `${state.user['ชื่อ']} (${state.user.role})`;
 
