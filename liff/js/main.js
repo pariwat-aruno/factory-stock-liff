@@ -41,21 +41,6 @@ async function boot() {
     return;
   }
 
-  // ถ้าเปิด admin LIFF แต่ไม่ใช่เจ้าของ → block
-  if (CONFIG.MODE === 'admin' && state.user.role !== 'เจ้าของ') {
-    document.getElementById('page').innerHTML = `
-      <div class="card center">
-        <h3>ส่วนนี้สำหรับเจ้าของเท่านั้น</h3>
-        <p class="muted">คุณ login เป็น <b>${state.user['ชื่อ']}</b> (${state.user.role})</p>
-        <hr>
-        <p class="muted">กลับไปใช้แอปสำหรับพนักงาน</p>
-        <a class="btn" href="https://liff.line.me/2010026617-i9TGbuOF" style="text-decoration:none;display:block">
-          เปิดแอปพนักงาน
-        </a>
-      </div>`;
-    return;
-  }
-
   document.getElementById('user-chip').textContent =
     `${state.user['ชื่อ']} (${state.user.role})`;
 
@@ -86,6 +71,19 @@ export function navigate(page) {
     b.classList.toggle('active', b.dataset.page === page);
   });
   const main = document.getElementById('page');
+
+  // owner-only check — block staff with friendly message
+  if (CONFIG.OWNER_ONLY_TABS.includes(page) && !isOwner()) {
+    main.innerHTML = `
+      <div class="card center">
+        <div style="font-size:48px;margin-bottom:8px">🔒</div>
+        <h3>คุณไม่มีสิทธิ์เข้าหน้านี้</h3>
+        <p class="muted">หน้า "${PAGES[page].label}" สำหรับเจ้าของเท่านั้น</p>
+        <p class="muted" style="font-size:13px">คุณ login เป็น <b>${state.user['ชื่อ']}</b> (${state.user.role})</p>
+      </div>`;
+    return;
+  }
+
   main.innerHTML = '<div id="loading">กำลังโหลด…</div>';
   Promise.resolve()
     .then(() => PAGES[page].render(main))

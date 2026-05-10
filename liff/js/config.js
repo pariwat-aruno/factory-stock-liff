@@ -1,32 +1,13 @@
-// Config — 2 modes: staff (เฉพาะรับเข้า+เบิก) / admin (ครบทุกอย่าง)
-// mode มาจาก <body data-mode="staff|admin"> ใน HTML
-// LIFF ID แต่ละ mode สร้างคนละตัวใน LINE Developers (endpoint URL คนละหน้า)
-
-const APP_MODE = (document.body && document.body.dataset.mode) || 'staff';
-
-const LIFF_IDS = {
-  staff: '2010026617-i9TGbuOF',
-  admin: '2010026617-Fok8auIP',
-};
-
-// แสดง tab ตาม mode
-const TABS = {
-  staff: ['stockIn', 'stockOut'],
-  admin: ['stockIn', 'stockOut', 'balance', 'admin'],
-};
-
-const DEFAULT_TAB = {
-  staff: 'stockIn',
-  admin: 'balance',
-};
+// Config — single LIFF, all 4 tabs visible
+// Admin tab visible to everyone but page-level role check blocks staff
 
 export const CONFIG = {
-  MODE: APP_MODE,
-  LIFF_ID: LIFF_IDS[APP_MODE] || LIFF_IDS.staff,
-  TABS: TABS[APP_MODE] || TABS.staff,
-  DEFAULT_TAB: DEFAULT_TAB[APP_MODE] || 'stockIn',
-
+  LIFF_ID: '2010026617-i9TGbuOF',
   API_URL: 'https://script.google.com/macros/s/AKfycbz31uqRMAtGeMShTJr9pnbCo8_DwWNCk12dZPtkxd5wGXzvcT_2C79BhNid-3rIz6pvGw/exec',
+
+  TABS: ['stockIn', 'stockOut', 'balance', 'admin'],
+  DEFAULT_TAB: 'stockIn',
+  OWNER_ONLY_TABS: ['admin'],
 
   DEV_MOCK_LIFF: false,
   DEV_MOCK_USER_ID: 'U_STAFF_TBD',
