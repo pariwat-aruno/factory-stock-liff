@@ -1,6 +1,7 @@
 import { initAuth, state, isOwner } from './auth.js';
 import { api } from './api.js';
-import { toast } from './utils.js';
+import { CONFIG } from './config.js';
+import { toast, el } from './utils.js';
 
 import { renderStockIn }  from './pages/stockIn.js';
 import { renderStockOut } from './pages/stockOut.js';
@@ -8,13 +9,11 @@ import { renderBalance }  from './pages/balance.js';
 import { renderAdmin }    from './pages/admin.js';
 
 const PAGES = {
-  stockIn:  renderStockIn,
-  stockOut: renderStockOut,
-  balance:  renderBalance,
-  admin:    renderAdmin,
+  stockIn:  { render: renderStockIn,  icon: '📥', label: 'รับเข้า' },
+  stockOut: { render: renderStockOut, icon: '📤', label: 'เบิก' },
+  balance:  { render: renderBalance,  icon: '📊', label: 'ยอด' },
+  admin:    { render: renderAdmin,    icon: '⚙️', label: 'Admin' },
 };
-
-let currentPage = 'balance';
 
 async function boot() {
   try {
@@ -45,31 +44,36 @@ async function boot() {
   document.getElementById('user-chip').textContent =
     `${state.user['ชื่อ']} (${state.user.role})`;
 
-  if (isOwner()) {
-    document.querySelectorAll('.admin-only').forEach(n => n.hidden = false);
-  }
-
-  document.querySelectorAll('#tabbar .tab').forEach(btn => {
-    btn.addEventListener('click', () => navigate(btn.dataset.page));
+  // ---- render tabbar ตาม CONFIG.TABS (filtered by mode) ----
+  const tabbar = document.getElementById('tabbar');
+  tabbar.innerHTML = '';
+  CONFIG.TABS.forEach(name => {
+    const p = PAGES[name];
+    if (!p) return;
+    const btn = el('button', { class: 'tab', 'data-page': name },
+      el('span', { class: 'tab-icon' }, p.icon),
+      el('span', { class: 'tab-label' }, p.label),
+    );
+    btn.addEventListener('click', () => navigate(name));
+    tabbar.appendChild(btn);
   });
 
-  // เปิด tab ตาม ?tab= ถ้ามี (Rich Menu deep link)
+  // เปิด tab ตาม ?tab= ถ้ามี (Rich Menu deep link), หรือ DEFAULT_TAB
   const params = new URLSearchParams(location.search);
   const wanted = params.get('tab');
-  const start = (wanted && PAGES[wanted]) ? wanted : 'balance';
+  const start = (wanted && CONFIG.TABS.includes(wanted)) ? wanted : CONFIG.DEFAULT_TAB;
   navigate(start);
 }
 
 export function navigate(page) {
   if (!PAGES[page]) return;
-  currentPage = page;
   document.querySelectorAll('#tabbar .tab').forEach(b => {
     b.classList.toggle('active', b.dataset.page === page);
   });
   const main = document.getElementById('page');
   main.innerHTML = '<div id="loading">กำลังโหลด…</div>';
   Promise.resolve()
-    .then(() => PAGES[page](main))
+    .then(() => PAGES[page].render(main))
     .catch(e => {
       main.innerHTML = '';
       toast(e.message, 'error');
