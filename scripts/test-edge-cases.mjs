@@ -21,6 +21,10 @@ if (!URL) { console.error('Set API_URL or scripts/.api-url'); process.exit(1); }
 const STAFF = 'U_STAFF_TBD';
 const OWNER = process.env.OWNER_ID || null;
 
+// dummy 1x1 jpeg ขั้นต่ำ — ใส่ 4 รูปสำหรับ stockIn (กฎใหม่ ≥4 รูป)
+const TINY = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wgARCAABAAEDAREAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQBAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhADEAAAAU//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAEFAk//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAEDAQE/AU//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/AU//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAY/Ak//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/IU//2gAMAwEAAgADAAAAEH//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAEDAQE/EE//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/EE//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/EE//2Q==';
+const PHOTOS_4 = [TINY, TINY, TINY, TINY];
+
 async function call(method, action, payload = {}) {
   if (method === 'GET') {
     const qs = new URLSearchParams({ action, line_user_id: STAFF, ...payload });
@@ -60,6 +64,17 @@ function ok(name, cond, hint = '') {
 function skipped(name, why) { console.log(`  ⏭  ${name} — ${why}`); skip++; }
 function section(n, title) { console.log(`\n[#${n}] ${title}`); }
 
+// ---------- 0: photo rule — stockIn ต้องมีรูป ≥4 ----------
+section(0, 'Photo rule — stockIn <4 รูป → block');
+{
+  const r1 = await call('POST', 'stockIn', { item_id: 'ITM-003', 'จำนวน': 1 }); // 0 รูป
+  ok('block: 0 photos', r1.ok === false && /รูป/.test(r1.error || ''), JSON.stringify(r1));
+  const r2 = await call('POST', 'stockIn', { item_id: 'ITM-003', 'จำนวน': 1, photos_base64: PHOTOS_4.slice(0, 3) });
+  ok('block: 3 photos', r2.ok === false && /รูป/.test(r2.error || ''), JSON.stringify(r2));
+  const r3 = await call('POST', 'stockIn', { item_id: 'ITM-003', 'จำนวน': 1, photos_base64: PHOTOS_4 });
+  ok('pass: 4 photos', r3.ok === true && Array.isArray(r3.photo_urls) && r3.photo_urls.length === 4, JSON.stringify(r3));
+}
+
 // ---------- 1: เบิกเกินยอดคงเหลือ ----------
 section(1, 'เบิกเกินยอดคงเหลือ → "ของไม่พอ"');
 {
@@ -78,7 +93,7 @@ section(2, 'ผู้ใช้ใหม่ → "ยังไม่ได้ล�
 section(3, 'ยกเลิกรายการของตัวเอง ≤5 นาที');
 {
   // stockIn 1 → cancel ทันที
-  const sin = await call('POST', 'stockIn', { item_id: 'ITM-003', 'จำนวน': 1 });
+  const sin = await call('POST', 'stockIn', { item_id: 'ITM-003', 'จำนวน': 1, photos_base64: PHOTOS_4 });
   if (!sin.ok) { ok('stockIn precondition', false, JSON.stringify(sin)); }
   else {
     const c = await call('POST', 'cancelTransaction', { table: 'Stock_In', row: sin.row });
@@ -119,7 +134,7 @@ if (!OWNER) {
   if (!created.ok) { ok('create test item', false, JSON.stringify(created)); }
   else {
     const id = created.item.item_id;
-    await call('POST', 'stockIn', { item_id: id, 'จำนวน': 5 });
+    await call('POST', 'stockIn', { item_id: id, 'จำนวน': 5, photos_base64: PHOTOS_4 });
     const arch = await callAs(OWNER, 'POST', 'archiveItem', { item_id: id });
     ok('archive succeeds', arch.ok === true && arch.item['สถานะ'] === 'archived');
 
@@ -139,7 +154,7 @@ section(9, 'Concurrent stockOut — LockService ป้องกัน race');
 {
   // stockIn ก่อน 4 ลิตร → ITM-003 ยอดเริ่ม 0 (ยังไม่มี history)
   // ยิง stockOut 3 ลิตร 4 ครั้งพร้อมกัน — ควรสำเร็จแค่ 1 ครั้ง (ของพอ 4) ทำผิดกฎไม่ได้
-  await call('POST', 'stockIn', { item_id: 'ITM-003', 'จำนวน': 4 });
+  await call('POST', 'stockIn', { item_id: 'ITM-003', 'จำนวน': 4, photos_base64: PHOTOS_4 });
   const before = await call('GET', 'balance');
   const beforeBal = before.balance.find(i => i.item_id === 'ITM-003').balance;
 
@@ -177,7 +192,7 @@ section(11, 'ราคายังไม่กรอก → dailyReport มู�
 // ---------- 12: timezone Asia/Bangkok ----------
 section(12, 'Timestamp ใช้ Asia/Bangkok');
 {
-  const sin = await call('POST', 'stockIn', { item_id: 'ITM-003', 'จำนวน': 0.001 });
+  const sin = await call('POST', 'stockIn', { item_id: 'ITM-003', 'จำนวน': 0.001, photos_base64: PHOTOS_4 });
   if (!sin.ok) ok('stockIn for tz check', false, JSON.stringify(sin));
   else {
     const ts = new Date(sin.timestamp);

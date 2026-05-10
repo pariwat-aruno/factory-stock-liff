@@ -39,25 +39,36 @@ function sumByItem_(sheetName) {
   return sums;
 }
 
-// รับเข้า: validate + อัปโหลดรูป → Drive → insert row
+// รับเข้า: validate + อัปโหลดรูปหลายรูป → Drive → insert row
+// กฎ: ต้องมีรูป ≥ MIN_PHOTOS (ถ่ายใหม่ทุกรูป — บังคับใน frontend)
+const MIN_PHOTOS = 4;
+
 function stockIn_(lineUserId, body) {
   const itemId = String(body.item_id || '').trim();
   const qty = Number(body['จำนวน']);
-  const photoB64 = String(body.photo_base64 || '');
+
+  // รับได้ทั้ง photos_base64 (array, ใหม่) หรือ photo_base64 (string, backward-compat)
+  let photos = Array.isArray(body.photos_base64) ? body.photos_base64
+             : (body.photo_base64 ? [body.photo_base64] : []);
+  photos = photos.filter(Boolean);
 
   if (!itemId) throw new Error('ต้องระบุ item_id');
   if (isNaN(qty) || qty <= 0) throw new Error('จำนวนต้องเป็นตัวเลข > 0');
+  if (photos.length < MIN_PHOTOS) {
+    throw new Error('ต้องแนบรูปอย่างน้อย ' + MIN_PHOTOS + ' รูป (มี ' + photos.length + ')');
+  }
   findItemRow_(itemId); // ensure exists
 
-  let photoUrl = '';
-  if (photoB64) {
-    photoUrl = uploadPhoto_(photoB64, itemId);
-  }
+  // upload ทุกรูป → join URL ด้วย ", " ใส่ใน column เดียว (รูปใบส่งของ)
+  const urls = photos.map(function (b64, i) {
+    return uploadPhoto_(b64, itemId + '_p' + (i + 1));
+  });
+  const photosCsv = urls.join(', ');
 
   const sheet = getSheet_('Stock_In');
   const ts = new Date();
   // header: timestamp, item_id, จำนวน, line_user_id, รูปใบส่งของ, สถานะ
-  sheet.appendRow([ts, itemId, qty, lineUserId, photoUrl, 'active']);
+  sheet.appendRow([ts, itemId, qty, lineUserId, photosCsv, 'active']);
   const rowNum = sheet.getLastRow();
 
   return {
@@ -65,7 +76,7 @@ function stockIn_(lineUserId, body) {
     timestamp: ts.toISOString(),
     item_id: itemId,
     'จำนวน': qty,
-    photo_url: photoUrl,
+    photo_urls: urls,
   };
 }
 
