@@ -59,31 +59,30 @@ async function boot() {
   });
 
   // เปิด tab ตาม ?tab= ถ้ามี (Rich Menu deep link), หรือ DEFAULT_TAB
+  // กัน deep link ที่ staff กดปุ่ม owner-only → fallback default
   const params = new URLSearchParams(location.search);
-  const wanted = params.get('tab');
-  const start = (wanted && CONFIG.TABS.includes(wanted)) ? wanted : CONFIG.DEFAULT_TAB;
-  navigate(start);
+  let wanted = params.get('tab');
+  if (wanted && !CONFIG.TABS.includes(wanted)) wanted = null;
+  if (wanted && CONFIG.OWNER_ONLY_TABS.includes(wanted) && !isOwner()) {
+    toast(`🔒 คุณไม่มีสิทธิ์เข้าหน้า "${PAGES[wanted].label}"`, 'error');
+    wanted = null;
+  }
+  navigate(wanted || CONFIG.DEFAULT_TAB);
 }
 
 export function navigate(page) {
   if (!PAGES[page]) return;
+
+  // owner-only check — แจ้งเตือนแล้วอยู่หน้าเดิม ไม่ switch tab
+  if (CONFIG.OWNER_ONLY_TABS.includes(page) && !isOwner()) {
+    toast(`🔒 คุณไม่มีสิทธิ์เข้าหน้า "${PAGES[page].label}"`, 'error');
+    return;
+  }
+
   document.querySelectorAll('#tabbar .tab').forEach(b => {
     b.classList.toggle('active', b.dataset.page === page);
   });
   const main = document.getElementById('page');
-
-  // owner-only check — block staff with friendly message
-  if (CONFIG.OWNER_ONLY_TABS.includes(page) && !isOwner()) {
-    main.innerHTML = `
-      <div class="card center">
-        <div style="font-size:48px;margin-bottom:8px">🔒</div>
-        <h3>คุณไม่มีสิทธิ์เข้าหน้านี้</h3>
-        <p class="muted">หน้า "${PAGES[page].label}" สำหรับเจ้าของเท่านั้น</p>
-        <p class="muted" style="font-size:13px">คุณ login เป็น <b>${state.user['ชื่อ']}</b> (${state.user.role})</p>
-      </div>`;
-    return;
-  }
-
   main.innerHTML = '<div id="loading">กำลังโหลด…</div>';
   Promise.resolve()
     .then(() => PAGES[page].render(main))
