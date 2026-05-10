@@ -8,8 +8,9 @@ export function toast(msg, type = 'default') {
   toast._t = setTimeout(() => { el.hidden = true; }, 3000);
 }
 
-// resize รูปก่อนแปลง base64 — max 1920px, jpeg quality 0.8
-export async function resizeImage(file, { maxSize = 1920, quality = 0.8 } = {}) {
+// resize รูป + burn timestamp overlay (Asia/Bangkok) → base64 jpeg
+// timestamp ถูก burn เข้า image bytes ตอน capture — แก้ไม่ได้ผ่าน UI
+export async function resizeImage(file, { maxSize = 1920, quality = 0.8, stamp = true } = {}) {
   const dataUrl = await readFileAsDataURL(file);
   const img = await loadImage(dataUrl);
 
@@ -21,8 +22,42 @@ export async function resizeImage(file, { maxSize = 1920, quality = 0.8 } = {}) 
 
   const canvas = document.createElement('canvas');
   canvas.width = width; canvas.height = height;
-  canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-  return canvas.toDataURL('image/jpeg', quality); // returns "data:image/jpeg;base64,..."
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, width, height);
+
+  if (stamp) drawTimestamp_(ctx, width, height);
+
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
+function drawTimestamp_(ctx, w, h) {
+  const ts = new Date().toLocaleString('sv-SE', { // sv-SE = ISO format YYYY-MM-DD HH:mm:ss
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  });
+  const label = `📷 ${ts}  Asia/Bangkok`;
+
+  // ปรับ font size ตามขนาดรูป — ~3% ของความสูง (min 28px)
+  const fontSize = Math.max(28, Math.round(h * 0.03));
+  ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", "Sarabun", sans-serif`;
+  ctx.textBaseline = 'bottom';
+  const padding = Math.round(fontSize * 0.5);
+  const textW = ctx.measureText(label).width;
+  const barH = fontSize + padding * 2;
+
+  // black semi-transparent bar เต็มกว้าง bottom
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+  ctx.fillRect(0, h - barH, w, barH);
+
+  // white text + แดงนิดสำหรับ accent (cherry theme)
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(label, padding, h - padding);
+
+  // เส้นแดง cherry บางๆ ขอบบนของ bar
+  ctx.fillStyle = '#c8102e';
+  ctx.fillRect(0, h - barH, w, 4);
 }
 
 function readFileAsDataURL(file) {
