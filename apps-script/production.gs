@@ -45,6 +45,7 @@ function shapePlan_(r) {
     timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : r.timestamp,
     'วันที่': formatBkkDate_(r['วันที่']),
     batch: r.batch,
+    item_id: r.item_id || '',
     'สินค้า': r['สินค้า'],
     'เป้า': target,
     'หน่วยผลผลิต': r['หน่วยผลผลิต'],
@@ -59,46 +60,59 @@ function shapePlan_(r) {
   };
 }
 
-// สร้างแผนใหม่ (เจ้าของ)
+// สร้างแผนใหม่ (เจ้าของ) — เลือก item_id ของสินค้าสำเร็จรูป, batch รันเองอัตโนมัติ
 function createPlan_(ownerId, body) {
-  const batch = String(body.batch || '').trim();
-  const productName = String(body['สินค้า'] || '').trim();
+  const itemId = String(body.item_id || '').trim();
   const target = Number(body['เป้า']);
-  const yieldUnit = String(body['หน่วยผลผลิต'] || '').trim();
   const note = String(body['หมายเหตุ'] || '').trim();
 
-  if (!batch) throw new Error('ต้องระบุ batch');
-  if (!productName) throw new Error('ต้องระบุชื่อสินค้า');
+  if (!itemId) throw new Error('ต้องเลือกสินค้า');
   if (isNaN(target) || target <= 0) throw new Error('เป้าต้องเป็นตัวเลข > 0');
-  if (!yieldUnit) throw new Error('ต้องระบุหน่วยผลผลิต (เช่น ขวด/หลอด)');
 
-  // กัน batch ซ้ำในวันเดียวกัน (เฉพาะ status active = ไม่ใช่ cancelled)
-  const today = todayBkk_();
-  const existing = readSheet_('Production').filter(function (r) {
-    return formatBkkDate_(r['วันที่']) === today
-      && String(r.batch).trim() === batch
-      && r['สถานะ'] !== 'cancelled';
-  });
-  if (existing.length > 0) {
-    throw new Error('มีแผนสำหรับ batch ' + batch + ' ในวันนี้แล้ว');
+  // หา item + ตรวจว่าเป็น "สินค้าสำเร็จรูป" จริง
+  const item = findItemRow_(itemId);
+  if (item['ประเภท'] !== 'สินค้าสำเร็จรูป') {
+    throw new Error('สินค้านี้ไม่ใช่ "สินค้าสำเร็จรูป" — เลือกได้เฉพาะสินค้าสำเร็จรูปเท่านั้น');
+  }
+  if (item['สถานะ'] !== 'active') {
+    throw new Error('สินค้านี้ถูก archive แล้ว');
   }
 
+  const productName = String(item['ชื่อ']);
+  const yieldUnit = String(item['หน่วย']);  // ใช้ "หน่วย" ของสินค้าสำเร็จรูปตรงๆ (เช่น ขวด/กระปุก)
+
+  const batch = nextBatchCode_();
   const planId = nextPlanId_();
   const now = new Date();
   const sheet = getSheet_('Production');
-  // header: plan_id, timestamp, วันที่, batch, สินค้า, เป้า, หน่วยผลผลิต, ผลจริง, ของเสีย, สถานะ, หมายเหตุ, owner_id, worker_id
+  // header: plan_id, timestamp, วันที่, batch, item_id, สินค้า, เป้า, หน่วยผลผลิต, ผลจริง, ของเสีย, สถานะ, หมายเหตุ, owner_id, worker_id
   sheet.appendRow([
-    planId, now, now, batch, productName,
+    planId, now, now, batch, itemId, productName,
     target, yieldUnit, 0, 0,
     'planned', note, ownerId, '',
   ]);
   const rowNum = sheet.getLastRow();
   return shapePlan_({
     _row: rowNum,
-    plan_id: planId, timestamp: now, 'วันที่': now, batch: batch, 'สินค้า': productName,
+    plan_id: planId, timestamp: now, 'วันที่': now, batch: batch,
+    item_id: itemId, 'สินค้า': productName,
     'เป้า': target, 'หน่วยผลผลิต': yieldUnit, 'ผลจริง': 0, 'ของเสีย': 0,
     'สถานะ': 'planned', 'หมายเหตุ': note, owner_id: ownerId, worker_id: '',
   });
+}
+
+// generate batch รัน B-YYMM-NNN (reset ต่อเดือน)
+// scan rows ใน Production ของเดือนนี้ → หาเลข running สูงสุด → +1
+function nextBatchCode_() {
+  const yyMM = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyMM');
+  const prefix = 'B-' + yyMM + '-';
+  const rows = readSheet_('Production');
+  let max = 0;
+  rows.forEach(function (r) {
+    const m = String(r.batch || '').match(/^B-(\d{4})-(\d+)$/);
+    if (m && m[1] === yyMM) max = Math.max(max, parseInt(m[2], 10));
+  });
+  return prefix + ('000' + (max + 1)).slice(-3);
 }
 
 // กรอกผลผลิตจริง (พนักงาน + เจ้าของ)

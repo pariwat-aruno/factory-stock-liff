@@ -14,7 +14,8 @@ export async function renderProduction(root) {
 
   // ปุ่ม + เพิ่มแผน (เจ้าของเท่านั้น)
   if (isOwner()) {
-    root.appendChild(renderCreateCard(root));
+    const finishedProductsRes = await api.listItems('สินค้าสำเร็จรูป');
+    root.appendChild(renderCreateCard(root, finishedProductsRes.items));
   }
 
   // list แผนวันนี้
@@ -34,29 +35,34 @@ export async function renderProduction(root) {
   res.plans.forEach(p => listCard.appendChild(renderPlanRow(p, root)));
 }
 
-function renderCreateCard(root) {
-  const batchIn   = el('input', { type: 'text', placeholder: 'เช่น VRD-2605-001' });
-  const productIn = el('input', { type: 'text', placeholder: 'เช่น เซรั่มโสมแดง 30g' });
-  const targetIn  = el('input', { type: 'number', min: '0', step: 'any', placeholder: '0' });
-  const unitIn    = el('input', { type: 'text', placeholder: 'ขวด / หลอด / กระปุก' });
-  const noteIn    = el('input', { type: 'text', placeholder: '(ไม่บังคับ)' });
+function renderCreateCard(root, finishedProducts) {
+  const itemSel = el('select', null,
+    el('option', { value: '' }, '— เลือกสินค้าสำเร็จรูป —'),
+    ...finishedProducts.map(p => el('option', { value: p.item_id }, `${p['ชื่อ']} (${p['หน่วย']})`))
+  );
+  const targetIn = el('input', { type: 'number', min: '0', step: 'any', placeholder: '0' });
+  const noteIn   = el('input', { type: 'text', placeholder: '(ไม่บังคับ)' });
+
+  const hint = el('div', { class: 'muted', style: 'font-size:12px;margin-top:-6px;margin-bottom:10px' },
+    finishedProducts.length === 0
+      ? '⚠️ ยังไม่มีสินค้าสำเร็จรูป — ไปที่ admin เพิ่มก่อน (ประเภท: สินค้าสำเร็จรูป)'
+      : 'Batch รันเลขอัตโนมัติ (B-YYMM-NNN)'
+  );
 
   const form = el('div', { class: 'card', style: 'display:none;background:#fafafa' },
-    el('div', { class: 'field' }, el('label', null, 'Batch'), batchIn),
-    el('div', { class: 'field' }, el('label', null, 'สินค้า'), productIn),
+    el('div', { class: 'field' }, el('label', null, 'สินค้า'), itemSel),
     el('div', { class: 'field' }, el('label', null, 'เป้าหมาย'), targetIn),
-    el('div', { class: 'field' }, el('label', null, 'หน่วยผลผลิต'), unitIn),
+    hint,
     el('div', { class: 'field' }, el('label', null, 'หมายเหตุ'), noteIn),
     el('div', { class: 'row', style: 'gap:6px' },
       el('button', {
         class: 'btn',
         onClick: async () => {
+          if (!itemSel.value) return toast('เลือกสินค้าก่อน', 'error');
           try {
             await api.createPlan({
-              batch: batchIn.value.trim(),
-              'สินค้า': productIn.value.trim(),
+              item_id: itemSel.value,
               'เป้า': Number(targetIn.value),
-              'หน่วยผลผลิต': unitIn.value.trim(),
               'หมายเหตุ': noteIn.value.trim(),
             });
             toast('ตั้งเป้าแล้ว ✓', 'success');

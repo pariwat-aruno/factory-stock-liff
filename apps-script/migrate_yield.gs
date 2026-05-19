@@ -52,7 +52,7 @@ function createProductionSheet() {
   }
   const sheet = ss.insertSheet('Production');
   const headers = [
-    'plan_id', 'timestamp', 'วันที่', 'batch', 'สินค้า',
+    'plan_id', 'timestamp', 'วันที่', 'batch', 'item_id', 'สินค้า',
     'เป้า', 'หน่วยผลผลิต', 'ผลจริง', 'ของเสีย',
     'สถานะ', 'หมายเหตุ', 'owner_id', 'worker_id',
   ];
@@ -62,12 +62,12 @@ function createProductionSheet() {
     .setBackground('#f1f3f4');
   sheet.setFrozenRows(1);
 
-  // validation ที่ "สถานะ" col 10 — เฉพาะ planned/done/cancelled
+  // validation ที่ "สถานะ" col 11 — เฉพาะ planned/done/cancelled
   const statusRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(['planned', 'done', 'cancelled'], true)
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 10, sheet.getMaxRows() - 1, 1).setDataValidation(statusRule);
+  sheet.getRange(2, 11, sheet.getMaxRows() - 1, 1).setDataValidation(statusRule);
 
   sheet.autoResizeColumns(1, headers.length);
   Logger.log('Production sheet created');

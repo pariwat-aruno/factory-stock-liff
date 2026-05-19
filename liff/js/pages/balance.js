@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { el, fmtNum } from '../utils.js';
 
-const CATEGORIES = ['ทั้งหมด', 'วัตถุดิบ', 'สารสกัด', 'แพคเกจจิ้ง', 'วัสดุสิ้นเปลือง', 'อะไหล่'];
+const CATEGORIES = ['ทั้งหมด', 'วัตถุดิบ', 'สารสกัด', 'แพคเกจจิ้ง', 'วัสดุสิ้นเปลือง', 'อะไหล่', 'สินค้าสำเร็จรูป'];
 
 let currentCategory = 'ทั้งหมด';
 

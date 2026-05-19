@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { el, toast, confirm, fmtNum } from '../utils.js';
 
-const CATEGORIES = ['วัตถุดิบ', 'สารสกัด', 'แพคเกจจิ้ง', 'วัสดุสิ้นเปลือง', 'อะไหล่'];
+const CATEGORIES = ['วัตถุดิบ', 'สารสกัด', 'แพคเกจจิ้ง', 'วัสดุสิ้นเปลือง', 'อะไหล่', 'สินค้าสำเร็จรูป'];
 
 export async function renderAdmin(root) {
   root.innerHTML = '';

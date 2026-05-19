@@ -3,7 +3,7 @@
  * — list (ทุกคน) / create / updatePrice / archive (เจ้าของเท่านั้น)
  */
 
-const ITEM_CATEGORIES = ['วัตถุดิบ', 'สารสกัด', 'แพคเกจจิ้ง', 'วัสดุสิ้นเปลือง', 'อะไหล่'];
+const ITEM_CATEGORIES = ['วัตถุดิบ', 'สารสกัด', 'แพคเกจจิ้ง', 'วัสดุสิ้นเปลือง', 'อะไหล่', 'สินค้าสำเร็จรูป'];
 
 // คืน items ทั้งหมดที่ไม่ archived (filter ตาม category ได้)
 function listItems_(category) {
