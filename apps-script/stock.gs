@@ -11,11 +11,13 @@ function getBalance_(category) {
 
   const inSums = sumByItem_('Stock_In');
   const outSums = sumByItem_('Stock_Out');
+  const adjSums = sumAdjustments_();
 
   return items.map(function (it) {
     const inQty = inSums[it.item_id] || 0;
     const outQty = outSums[it.item_id] || 0;
-    const balance = inQty - outQty;
+    const adjQty = adjSums[it.item_id] || 0;
+    const balance = inQty - outQty + adjQty;
     return {
       item_id: it.item_id,
       'ชื่อ': it['ชื่อ'],
@@ -41,11 +43,27 @@ function sumByItem_(sheetName) {
   return sums;
 }
 
+// รวม delta จาก Sheet Adjustments — ใช้ใน getBalance_
+// คืน {} ถ้า Sheet ยังไม่ได้สร้าง (Phase 2 ปรับยอด)
+function sumAdjustments_() {
+  const sheet = getSS_().getSheetByName('Adjustments');
+  if (!sheet) return {};
+  const rows = readSheet_('Adjustments');
+  const sums = {};
+  rows.forEach(function (r) {
+    if (r['สถานะ'] !== 'active') return;
+    const id = r.item_id;
+    sums[id] = (sums[id] || 0) + Number(r.delta || 0);
+  });
+  return sums;
+}
+
 // รับเข้า: validate + อัปโหลดรูปหลายรูป → Drive → insert row
 // กฎ: ต้องมีรูป ≥ MIN_PHOTOS (ถ่ายใหม่ทุกรูป — บังคับใน frontend)
 const MIN_PHOTOS = 4;
 
-function stockIn_(lineUserId, body) {
+function stockIn_(user, body) {
+  const lineUserId = user.line_user_id;
   const itemId = String(body.item_id || '').trim();
   const qty = Number(body['จำนวน']);
 
@@ -59,7 +77,7 @@ function stockIn_(lineUserId, body) {
   if (photos.length < MIN_PHOTOS) {
     throw new Error('ต้องแนบรูปอย่างน้อย ' + MIN_PHOTOS + ' รูป (มี ' + photos.length + ')');
   }
-  findItemRow_(itemId); // ensure exists
+  const itemMaster = findItemRow_(itemId);
 
   // upload ทุกรูป → join URL ด้วย ", " ใส่ใน column เดียว (รูปใบส่งของ)
   const urls = photos.map(function (b64, i) {
@@ -73,6 +91,10 @@ function stockIn_(lineUserId, body) {
   sheet.appendRow([ts, itemId, qty, lineUserId, photosCsv, 'active']);
   const rowNum = sheet.getLastRow();
 
+  audit_(user, 'รับเข้า',
+    'รับเข้า ' + itemId + ' ' + itemMaster['ชื่อ'] + ' ' + qty + ' ' + itemMaster['หน่วย'],
+    { row: rowNum, photos: urls.length }, itemId);
+
   return {
     row: rowNum,
     timestamp: ts.toISOString(),
@@ -83,7 +105,8 @@ function stockIn_(lineUserId, body) {
 }
 
 // เบิก: ใช้ LockService → check balance → insert → trigger notify ถ้า ≤ min
-function stockOut_(lineUserId, body) {
+function stockOut_(user, body) {
+  const lineUserId = user.line_user_id;
   const itemId = String(body.item_id || '').trim();
   const qty = Number(body['จำนวน']);
   const batch = String(body.batch || '').trim();
@@ -100,7 +123,8 @@ function stockOut_(lineUserId, body) {
     // คำนวณ balance สดๆ ใน lock
     const inSums = sumByItem_('Stock_In');
     const outSums = sumByItem_('Stock_Out');
-    const balanceBefore = (inSums[itemId] || 0) - (outSums[itemId] || 0);
+    const adjSums = sumAdjustments_();
+    const balanceBefore = (inSums[itemId] || 0) - (outSums[itemId] || 0) + (adjSums[itemId] || 0);
     if (balanceBefore < qty) {
       throw new Error('ของไม่พอ ยอดคงเหลือ ' + balanceBefore + ' ' + item['หน่วย']);
     }
@@ -131,6 +155,12 @@ function stockOut_(lineUserId, body) {
 
   const rowNum = getSheet_('Stock_Out').getLastRow();
   const yieldInfo = computeYield_(item, qty);
+
+  audit_(user, 'เบิก',
+    'เบิก ' + itemId + ' ' + item['ชื่อ'] + ' ' + qty + ' ' + item['หน่วย'] + ' (batch ' + batch + ')',
+    { row: rowNum, batch: batch, balance_after: balanceAfter, yield: yieldInfo },
+    itemId);
+
   return {
     row: rowNum,
     item_id: itemId,
@@ -153,6 +183,60 @@ function computeYield_(item, qty) {
   return {
     qty: Math.floor((qty * 1000) / packSize),
     unit: yieldUnit,
+  };
+}
+
+// ปรับยอดคงเหลือโดยเจ้าของ — append row ใน Sheet Adjustments (delta = ค่าใหม่ - ค่าเดิม)
+// กฎ: ต้องระบุ "เหตุผล" — บังคับ เพื่อให้ audit trail ตรวจสอบได้
+function overrideStockBalance_(user, body) {
+  const itemId = String(body.item_id || '').trim();
+  const newBalance = Number(body['ค่าใหม่']);
+  const reason = String(body['เหตุผล'] || '').trim();
+
+  if (!itemId) throw new Error('ต้องระบุ item_id');
+  if (isNaN(newBalance)) throw new Error('ค่าใหม่ต้องเป็นตัวเลข');
+  if (!reason) throw new Error('ต้องระบุเหตุผล');
+
+  if (!getSS_().getSheetByName('Adjustments')) {
+    throw new Error('ยังไม่มี Sheet Adjustments — รัน createAdjustmentsSheet ใน editor ก่อน');
+  }
+
+  const item = findItemRow_(itemId);
+
+  // คำนวณ balance ปัจจุบัน (ใช้ pattern เดียวกับ getBalance_)
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  let delta;
+  let currentBal;
+  try {
+    const inSums = sumByItem_('Stock_In');
+    const outSums = sumByItem_('Stock_Out');
+    const adjSums = sumAdjustments_();
+    currentBal = (inSums[itemId] || 0) - (outSums[itemId] || 0) + (adjSums[itemId] || 0);
+    delta = newBalance - currentBal;
+
+    if (delta === 0) throw new Error('ค่าใหม่เท่ากับค่าเดิม ไม่ต้องปรับ');
+
+    // header: timestamp, item_id, ค่าเดิม, ค่าใหม่, delta, เหตุผล, line_user_id, สถานะ
+    getSheet_('Adjustments').appendRow([
+      new Date(), itemId, currentBal, newBalance, delta,
+      reason, user.line_user_id, 'active',
+    ]);
+  } finally {
+    lock.releaseLock();
+  }
+
+  audit_(user, 'ปรับยอด',
+    'ปรับยอด ' + itemId + ' ' + item['ชื่อ'] + ' ' + currentBal + ' → ' + newBalance +
+      ' ' + item['หน่วย'] + ' (delta ' + (delta > 0 ? '+' : '') + delta + ') เหตุผล: ' + reason,
+    { item_id: itemId, from: currentBal, to: newBalance, delta: delta, 'เหตุผล': reason },
+    itemId);
+
+  return {
+    item_id: itemId,
+    'ค่าเดิม': currentBal,
+    'ค่าใหม่': newBalance,
+    delta: delta,
   };
 }
 

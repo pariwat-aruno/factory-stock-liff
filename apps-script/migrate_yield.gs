@@ -75,6 +75,64 @@ function createProductionSheet() {
 }
 
 /**
+ * สร้าง Sheet "Audit" — บันทึกทุก action ในระบบ
+ * รันใน editor ครั้งเดียว (idempotent)
+ */
+function createAuditSheet() {
+  const ss = getSS_();
+  if (ss.getSheetByName('Audit')) {
+    Logger.log('skip — Sheet "Audit" exists already');
+    return 'already exists';
+  }
+  const sheet = ss.insertSheet('Audit');
+  const headers = [
+    'timestamp', 'line_user_id', 'ชื่อ', 'role',
+    'action', 'รายละเอียด', 'meta_json', 'item_id',
+  ];
+  sheet.getRange(1, 1, 1, headers.length)
+    .setValues([headers])
+    .setFontWeight('bold')
+    .setBackground('#f1f3f4');
+  sheet.setFrozenRows(1);
+  sheet.autoResizeColumns(1, headers.length);
+  Logger.log('Audit sheet created');
+  return 'created';
+}
+
+/**
+ * สร้าง Sheet "Adjustments" — บันทึกการปรับยอดสต็อกโดยเจ้าของ
+ * ใช้ในการ override balance — รวมใน getBalance_ ผ่าน sumByItem_
+ */
+function createAdjustmentsSheet() {
+  const ss = getSS_();
+  if (ss.getSheetByName('Adjustments')) {
+    Logger.log('skip — Sheet "Adjustments" exists already');
+    return 'already exists';
+  }
+  const sheet = ss.insertSheet('Adjustments');
+  const headers = [
+    'timestamp', 'item_id', 'ค่าเดิม', 'ค่าใหม่', 'delta',
+    'เหตุผล', 'line_user_id', 'สถานะ',
+  ];
+  sheet.getRange(1, 1, 1, headers.length)
+    .setValues([headers])
+    .setFontWeight('bold')
+    .setBackground('#f1f3f4');
+  sheet.setFrozenRows(1);
+
+  // status enum
+  const rule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['active', 'cancelled'], true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 8, sheet.getMaxRows() - 1, 1).setDataValidation(rule);
+
+  sheet.autoResizeColumns(1, headers.length);
+  Logger.log('Adjustments sheet created');
+  return 'created';
+}
+
+/**
  * Fix data validation ของ 2 column "ขนาดบรรจุ" + "หน่วยผลผลิต"
  * — ใช้ตอนรัน migrate รุ่นเก่าที่ลืม clear validation
  * — รันใน editor: เลือก fixYieldColumnsValidation → ▶ Run

@@ -125,6 +125,30 @@
 - % บรรลุ = `floor((ผลจริง / เป้า) × 100)` แสดงเฉพาะตอน status=done
 - batch pattern: `B-YYMM-NNN` (เช่น B-2605-001) reset เป็น 001 ทุกเดือนใหม่
 
+### Sheet: `Adjustments` (ปรับยอดโดยเจ้าของ)
+| Column | Type | ตัวอย่าง | หมายเหตุ |
+|---|---|---|---|
+| timestamp | datetime | 2026-05-19 16:00:00 | auto |
+| item_id | string | ITM-001 | FK → Master_Items |
+| ค่าเดิม | number | 100 | balance ก่อนปรับ |
+| ค่าใหม่ | number | 95 | balance ใหม่ |
+| delta | number | -5 | ค่าใหม่ − ค่าเดิม (เก็บเพื่อเร็วในการคำนวณ) |
+| เหตุผล | string | นับสต็อกจริงแล้วต่าง | บังคับ |
+| line_user_id | string | U... | เจ้าของเท่านั้น |
+| สถานะ | enum | active | active / cancelled |
+
+### Sheet: `Audit` (บันทึกทุก action)
+| Column | Type | ตัวอย่าง | หมายเหตุ |
+|---|---|---|---|
+| timestamp | datetime | 2026-05-19 14:32 | auto |
+| line_user_id | string | U... | คนกระทำ |
+| ชื่อ | string | พี่ปุ้ย | snapshot ตอนนั้น |
+| role | string | เจ้าของ | snapshot ตอนนั้น |
+| action | string | รับเข้า | enum ภาษาไทย (รับเข้า / เบิก / ยกเลิกรายการ / เพิ่มสินค้า / แก้สินค้า / archive สินค้า / ตั้งเป้าผลิต / กรอกผลผลิต / ยกเลิกแผน / ปรับยอด) |
+| รายละเอียด | string | "รับเข้า ITM-001 น้ำมันโจโจบา 10 ลิตร" | ข้อความภาษาไทยอ่านง่าย |
+| meta_json | string | {"row":5,"photos":4} | JSON string เผื่อ debug |
+| item_id | string | ITM-001 | optional FK |
+
 ### Sheet: `Logs` (error logs)
 | Column | Type | ตัวอย่าง | หมายเหตุ |
 |---|---|---|---|
@@ -145,7 +169,7 @@
 5. **Secrets:** ใส่ใน Script Properties (Apps Script) / n8n Credentials เท่านั้น ห้ามใส่ใน code
 6. **ID generation:** `item_id` ใช้ pattern `ITM-XXX` (running number 3 หลัก)
 7. **Soft delete:** ห้าม delete row จริงใน Sheet — เปลี่ยน `สถานะ` เป็น `archived` / `cancelled` แทน
-8. **ยอดคงเหลือ:** คำนวณ real-time จาก `SUM(Stock_In.จำนวน WHERE สถานะ=active) − SUM(Stock_Out.จำนวน WHERE สถานะ=active)` ห้าม cache
+8. **ยอดคงเหลือ:** คำนวณ real-time จาก `SUM(Stock_In active) − SUM(Stock_Out active) + SUM(Adjustments.delta active)` ห้าม cache
 9. **Validation:** ก่อนเขียน Stock_Out ต้องเช็คยอดคงเหลือ — ถ้าไม่พอ → block + return error "ของไม่พอ"
 10. **ยกเลิกรายการ:** อนุญาตเฉพาะเจ้าของรายการ + ภายใน 5 นาทีหลัง timestamp เท่านั้น
 11. **รูปภาพ:** อัปโหลดผ่าน LIFF → Apps Script รับ → save ไป Google Drive folder กลาง → เก็บแค่ URL ใน Sheet

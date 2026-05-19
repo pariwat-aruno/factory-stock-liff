@@ -61,7 +61,8 @@ function shapePlan_(r) {
 }
 
 // สร้างแผนใหม่ (เจ้าของ) — เลือก item_id ของสินค้าสำเร็จรูป, batch รันเองอัตโนมัติ
-function createPlan_(ownerId, body) {
+function createPlan_(user, body) {
+  const ownerId = user.line_user_id;
   const itemId = String(body.item_id || '').trim();
   const target = Number(body['เป้า']);
   const note = String(body['หมายเหตุ'] || '').trim();
@@ -92,6 +93,11 @@ function createPlan_(ownerId, body) {
     'planned', note, ownerId, '',
   ]);
   const rowNum = sheet.getLastRow();
+
+  audit_(user, 'ตั้งเป้าผลิต',
+    'ตั้งเป้า ' + batch + ' ' + productName + ' = ' + target + ' ' + yieldUnit,
+    { plan_id: planId, batch: batch, item_id: itemId, 'เป้า': target }, itemId);
+
   return shapePlan_({
     _row: rowNum,
     plan_id: planId, timestamp: now, 'วันที่': now, batch: batch,
@@ -116,7 +122,8 @@ function nextBatchCode_() {
 }
 
 // กรอกผลผลิตจริง (พนักงาน + เจ้าของ)
-function updatePlanResult_(currentUserId, body) {
+function updatePlanResult_(user, body) {
+  const currentUserId = user.line_user_id;
   const planId = String(body.plan_id || '').trim();
   const actual = Number(body['ผลจริง']);
   const waste = body.hasOwnProperty('ของเสีย') ? Number(body['ของเสีย']) : 0;
@@ -140,16 +147,28 @@ function updatePlanResult_(currentUserId, body) {
 
   // อ่านกลับมาเพื่อคำนวณ percent
   const updated = readSheet_('Production').find(function (r) { return String(r.plan_id) === planId; });
-  return shapePlan_(updated);
+  const shaped = shapePlan_(updated);
+
+  audit_(user, 'กรอกผลผลิต',
+    'กรอกผล ' + shaped.batch + ' ' + shaped['สินค้า'] +
+      ' = ' + actual + '/' + shaped['เป้า'] + ' ' + shaped['หน่วยผลผลิต'] +
+      ' (' + (shaped.percent != null ? shaped.percent + '%' : '—') + ', ของเสีย ' + waste + ')',
+    { plan_id: planId, 'ผลจริง': actual, 'ของเสีย': waste, percent: shaped.percent },
+    shaped.item_id);
+
+  return shaped;
 }
 
 // ยกเลิกแผน (เจ้าของ)
-function cancelPlan_(body) {
+function cancelPlan_(user, body) {
   const planId = String(body.plan_id || '').trim();
   if (!planId) throw new Error('ต้องระบุ plan_id');
   const found = findPlanRow_(planId);
   if (found['สถานะ'] === 'cancelled') throw new Error('แผนนี้ถูกยกเลิกแล้ว');
   getSheet_('Production').getRange(found._row, planColIndex_('สถานะ')).setValue('cancelled');
+  audit_(user, 'ยกเลิกแผน',
+    'ยกเลิกแผน ' + found.batch + ' ' + found['สินค้า'], { plan_id: planId },
+    found.item_id);
   return Object.assign({}, shapePlan_(found), { 'สถานะ': 'cancelled' });
 }
 

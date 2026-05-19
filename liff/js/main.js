@@ -7,6 +7,7 @@ import { renderStockIn }    from './pages/stockIn.js';
 import { renderStockOut }   from './pages/stockOut.js';
 import { renderProduction } from './pages/production.js';
 import { renderBalance }    from './pages/balance.js';
+import { renderAudit }      from './pages/audit.js';
 import { renderAdmin }      from './pages/admin.js';
 
 const PAGES = {
@@ -14,6 +15,7 @@ const PAGES = {
   stockOut:   { render: renderStockOut,   icon: '📤', label: 'เบิก' },
   production: { render: renderProduction, icon: '🏭', label: 'ผลิต' },
   balance:    { render: renderBalance,    icon: '📊', label: 'ยอด' },
+  audit:      { render: renderAudit,      icon: '📋', label: 'บันทึก' },
   admin:      { render: renderAdmin,      icon: '⚙️', label: 'Admin' },
 };
 

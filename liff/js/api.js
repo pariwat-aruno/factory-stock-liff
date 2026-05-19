@@ -49,4 +49,7 @@ export const api = {
   createPlan:         (b)               => apiPost('createPlan', b),
   updatePlanResult:   (b)               => apiPost('updatePlanResult', b),
   cancelPlan:         (plan_id)         => apiPost('cancelPlan', { plan_id }),
+
+  overrideBalance:    (b)               => apiPost('overrideBalance', b),
+  auditLogs:          (days, limit)     => apiGet('auditLogs', { days: days || 7, limit: limit || 200 }),
 };

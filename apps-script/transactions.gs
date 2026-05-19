@@ -46,7 +46,8 @@ function cancelTransaction_(currentUser, body) {
   if (table === 'Stock_In') {
     const inSums = sumByItem_('Stock_In');
     const outSums = sumByItem_('Stock_Out');
-    const currentBal = (inSums[rec.item_id] || 0) - (outSums[rec.item_id] || 0);
+    const adjSums = sumAdjustments_();
+    const currentBal = (inSums[rec.item_id] || 0) - (outSums[rec.item_id] || 0) + (adjSums[rec.item_id] || 0);
     const balAfter = currentBal - Number(rec['จำนวน'] || 0);
     if (balAfter < 0) {
       throw new Error('ยกเลิกไม่ได้ — ของถูกเบิกไปแล้ว ยอดจะติดลบ');
@@ -56,6 +57,11 @@ function cancelTransaction_(currentUser, body) {
   // col index ของ "สถานะ" (1-based)
   const statusCol = headers.indexOf('สถานะ') + 1;
   sheet.getRange(row, statusCol).setValue('cancelled');
+
+  audit_(currentUser, 'ยกเลิกรายการ',
+    'ยกเลิก ' + table + ' row ' + row + ' (' + rec.item_id + ' จำนวน ' + rec['จำนวน'] + ')',
+    { table: table, row: row, original: { item_id: rec.item_id, 'จำนวน': rec['จำนวน'] } },
+    rec.item_id);
 
   return { table: table, row: row, 'สถานะ': 'cancelled' };
 }

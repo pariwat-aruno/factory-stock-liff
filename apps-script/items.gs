@@ -16,7 +16,9 @@ function listItems_(category) {
 }
 
 // สร้าง item ใหม่ (เจ้าของ)
-function createItem_(body) {
+// user nullable — null = seed/migration (audit เป็น system)
+function createItem_(user, body) {
+  if (arguments.length === 1) { body = user; user = null; }  // backward-compat สำหรับ seed
   const name = String(body['ชื่อ'] || '').trim();
   const category = String(body['ประเภท'] || '').trim();
   const unit = String(body['หน่วย'] || '').trim();
@@ -51,6 +53,10 @@ function createItem_(body) {
   // header: item_id, ชื่อ, ประเภท, หน่วย, ราคาต่อหน่วย, ขั้นต่ำ, ขนาดบรรจุ, หน่วยผลผลิต, สถานะ
   sheet.appendRow([itemId, name, category, unit, '', minStock, packSize, yieldUnit, 'active']);
 
+  audit_(user, 'เพิ่มสินค้า',
+    'เพิ่มสินค้า ' + itemId + ' ' + name + ' (' + category + ', ' + unit + ')',
+    { item_id: itemId, 'ชื่อ': name, 'ประเภท': category, 'หน่วย': unit, 'ขั้นต่ำ': minStock }, itemId);
+
   return {
     item_id: itemId,
     'ชื่อ': name,
@@ -65,7 +71,7 @@ function createItem_(body) {
 }
 
 // อัปเดตราคา (เจ้าของ)
-function updateItemPrice_(body) {
+function updateItemPrice_(user, body) {
   const itemId = String(body.item_id || '').trim();
   const price = Number(body['ราคาต่อหน่วย']);
   if (!itemId) throw new Error('ต้องระบุ item_id');
@@ -74,12 +80,15 @@ function updateItemPrice_(body) {
   const found = findItemRow_(itemId);
   const col = itemColIndex_('ราคาต่อหน่วย');
   getSheet_('Master_Items').getRange(found._row, col).setValue(price);
+  audit_(user, 'แก้ราคา',
+    'แก้ราคา ' + itemId + ' ' + found['ชื่อ'] + ' → ' + price,
+    { from: found['ราคาต่อหน่วย'], to: price }, itemId);
   return Object.assign({}, found, { 'ราคาต่อหน่วย': price });
 }
 
 // อัปเดต ขนาดบรรจุ + หน่วยผลผลิต (เจ้าของ)
 // ส่งค่าว่าง 2 field พร้อมกัน = ล้าง (สินค้านี้ไม่ใช่ bulk แล้ว)
-function updateItemYield_(body) {
+function updateItemYield_(user, body) {
   const itemId = String(body.item_id || '').trim();
   if (!itemId) throw new Error('ต้องระบุ item_id');
 
@@ -98,13 +107,16 @@ function updateItemYield_(body) {
   const sheet = getSheet_('Master_Items');
   sheet.getRange(found._row, itemColIndex_('ขนาดบรรจุ')).setValue(packSize);
   sheet.getRange(found._row, itemColIndex_('หน่วยผลผลิต')).setValue(yieldUnit);
+  audit_(user, 'แก้ขนาดบรรจุ',
+    'แก้ขนาดบรรจุ ' + itemId + ' ' + found['ชื่อ'] + ' → ' + (packSize || '—') + (yieldUnit ? '/' + yieldUnit : ''),
+    { 'ขนาดบรรจุ': packSize, 'หน่วยผลผลิต': yieldUnit }, itemId);
   return Object.assign({}, found, { 'ขนาดบรรจุ': packSize, 'หน่วยผลผลิต': yieldUnit });
 }
 
 // แก้รายละเอียดสินค้าครบทุก field (เจ้าของ)
 // รับ partial body — field ที่ไม่ส่งมา = ไม่แก้
 // "ขนาดบรรจุ" + "หน่วยผลผลิต" ต้องส่งคู่กันเสมอ
-function updateItem_(body) {
+function updateItem_(user, body) {
   const itemId = String(body.item_id || '').trim();
   if (!itemId) throw new Error('ต้องระบุ item_id');
 
@@ -181,11 +193,14 @@ function updateItem_(body) {
   Object.keys(updates).forEach(function (col) {
     sheet.getRange(found._row, itemColIndex_(col)).setValue(updates[col]);
   });
+  audit_(user, 'แก้สินค้า',
+    'แก้สินค้า ' + itemId + ' ' + (updates['ชื่อ'] || found['ชื่อ']) + ' (' + Object.keys(updates).join(', ') + ')',
+    { item_id: itemId, updates: updates }, itemId);
   return Object.assign({}, found, updates);
 }
 
 // archive (soft delete) — เจ้าของ
-function archiveItem_(body) {
+function archiveItem_(user, body) {
   const itemId = String(body.item_id || '').trim();
   if (!itemId) throw new Error('ต้องระบุ item_id');
 
@@ -193,6 +208,8 @@ function archiveItem_(body) {
   if (found['สถานะ'] === 'archived') throw new Error('สินค้านี้ถูก archive แล้ว');
   const col = itemColIndex_('สถานะ');
   getSheet_('Master_Items').getRange(found._row, col).setValue('archived');
+  audit_(user, 'archive สินค้า',
+    'archive ' + itemId + ' ' + found['ชื่อ'], { item_id: itemId }, itemId);
   return Object.assign({}, found, { 'สถานะ': 'archived' });
 }
 
