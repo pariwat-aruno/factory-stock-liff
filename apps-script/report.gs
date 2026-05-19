@@ -4,7 +4,8 @@
  * — Cache 5 นาที (CacheService) — กัน 6-min timeout เวลา item เยอะ
  *
  * Response shape:
- *   { ok, generated_at, low_items[], categories[ { category, items[], total_value? } ] }
+ *   { ok, generated_at, low_items[], categories[ { category, items[], total_value? } ],
+ *     today_stockout[ { item_id, ชื่อ, จำนวน, หน่วย, batch, yield_qty?, yield_unit? } ] }
  */
 
 const REPORT_CACHE_KEY = 'dailyReport.v1';
@@ -72,6 +73,7 @@ function dailyReport_() {
     generated_at: new Date().toISOString(),
     low_items: lowItems,
     categories: categories,
+    today_stockout: todayStockOutWithYield_(itemsById),
   };
 
   try {
@@ -79,4 +81,30 @@ function dailyReport_() {
   } catch (_) { /* cache เกิน 100KB → ข้าม */ }
 
   return result;
+}
+
+// รวมการเบิกของวันนี้ (Asia/Bangkok) — ใส่ yield คาดการณ์สำหรับ bulk material
+function todayStockOutWithYield_(itemsById) {
+  const tz = 'Asia/Bangkok';
+  const today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  const rows = readSheet_('Stock_Out');
+  return rows
+    .filter(function (r) {
+      if (r['สถานะ'] !== 'active') return false;
+      const ts = r.timestamp instanceof Date ? r.timestamp : new Date(r.timestamp);
+      return Utilities.formatDate(ts, tz, 'yyyy-MM-dd') === today;
+    })
+    .map(function (r) {
+      const master = itemsById[r.item_id] || {};
+      const y = computeYield_(master, Number(r['จำนวน'] || 0));
+      return {
+        item_id: r.item_id,
+        'ชื่อ': master['ชื่อ'] || '',
+        'จำนวน': Number(r['จำนวน'] || 0),
+        'หน่วย': master['หน่วย'] || '',
+        batch: r.batch || '',
+        yield_qty: y.qty,
+        yield_unit: y.unit,
+      };
+    });
 }

@@ -41,5 +41,7 @@ export const api = {
 
   createItem:         (b)               => apiPost('createItem', b),
   updateItemPrice:    (b)               => apiPost('updateItemPrice', b),
+  updateItemYield:    (b)               => apiPost('updateItemYield', b),
+  updateItem:         (b)               => apiPost('updateItem', b),
   archiveItem:        (item_id)         => apiPost('archiveItem', { item_id }),
 };

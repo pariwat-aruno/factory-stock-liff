@@ -15,17 +15,33 @@ export async function renderStockOut(root) {
     ...items.map(i => el('option', { value: i.item_id }, `${i['ชื่อ']} (เหลือ ${fmtNum(i.balance)} ${i['หน่วย']})`))
   );
   const qtyIn   = el('input', { type: 'number', min: '0', step: 'any', placeholder: '0' });
+  qtyIn.addEventListener('input', () => refreshYield());
   const batchIn = el('input', { type: 'text', placeholder: 'รหัสสูตร เช่น VRD-2605-001' });
   const submit  = el('button', { class: 'btn' }, 'บันทึกเบิก');
   const undoBox = el('div', null);
 
   // แสดงยอดคงเหลือของ item ที่เลือก
   const balanceHint = el('div', { class: 'muted', style: 'margin-top:-8px;margin-bottom:14px' });
+  // แสดง yield คาดการณ์ live ตอนกรอกจำนวน — ถ้า item มีขนาดบรรจุ
+  const yieldHint = el('div', { class: 'muted', style: 'margin-top:-8px;margin-bottom:14px;color:#b91c1c' });
+
+  function refreshYield() {
+    const it = items.find(x => x.item_id === itemSel.value);
+    const qty = Number(qtyIn.value);
+    if (!it || !it['ขนาดบรรจุ'] || !it['หน่วยผลผลิต'] || !qty || qty <= 0) {
+      yieldHint.textContent = '';
+      return;
+    }
+    const yq = Math.floor((qty * 1000) / Number(it['ขนาดบรรจุ']));
+    yieldHint.textContent = `🧴 คาดว่าจะได้ ~${fmtNum(yq)} ${it['หน่วยผลผลิต']} (ขนาดบรรจุ ${it['ขนาดบรรจุ']}g/${it['หน่วยผลผลิต']})`;
+  }
+
   itemSel.addEventListener('change', () => {
     const it = items.find(x => x.item_id === itemSel.value);
     balanceHint.textContent = it
       ? `คงเหลือ ${fmtNum(it.balance)} ${it['หน่วย']}` + (it.isLow ? ' ⚠️ ใกล้หมด' : '')
       : '';
+    refreshYield();
   });
 
   submit.addEventListener('click', async () => {
@@ -41,7 +57,13 @@ export async function renderStockOut(root) {
       const r = await api.stockOut({ item_id, 'จำนวน': qty, batch });
       lastSubmittedRow = { row: r.row, ts: Date.now() };
       const it = items.find(x => x.item_id === item_id);
-      toast(`เบิก ${it['ชื่อ']} ${fmtNum(qty)} ${it['หน่วย']} → เหลือ ${fmtNum(r.balance_after)}`, 'success');
+      const yieldLine = r.yield_qty
+        ? ` 🧴 คาดว่าจะได้ ~${fmtNum(r.yield_qty)} ${r.yield_unit}`
+        : '';
+      toast(
+        `เบิก ${it['ชื่อ']} ${fmtNum(qty)} ${it['หน่วย']} → เหลือ ${fmtNum(r.balance_after)}` + yieldLine,
+        'success'
+      );
       itemSel.value = ''; qtyIn.value = ''; batchIn.value = ''; balanceHint.textContent = '';
       renderUndo();
     } catch (e) {
@@ -76,6 +98,7 @@ export async function renderStockOut(root) {
     el('div', { class: 'field' }, el('label', null, 'สินค้า'), itemSel),
     balanceHint,
     el('div', { class: 'field' }, el('label', null, 'จำนวน'), qtyIn),
+    yieldHint,
     el('div', { class: 'field' }, el('label', null, 'Batch / สูตร'), batchIn),
     submit,
   ));

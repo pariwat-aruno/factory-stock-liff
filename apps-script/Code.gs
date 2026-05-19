@@ -11,8 +11,10 @@
  *   POST body JSON:
  *     {action: 'stockIn',  line_user_id, item_id, จำนวน, photo_base64}
  *     {action: 'stockOut', line_user_id, item_id, จำนวน, batch}
- *     {action: 'createItem', line_user_id, ชื่อ, ประเภท, หน่วย, ขั้นต่ำ}
+ *     {action: 'createItem', line_user_id, ชื่อ, ประเภท, หน่วย, ขั้นต่ำ, ขนาดบรรจุ?, หน่วยผลผลิต?}
  *     {action: 'updateItemPrice', line_user_id, item_id, ราคาต่อหน่วย}
+ *     {action: 'updateItemYield', line_user_id, item_id, ขนาดบรรจุ, หน่วยผลผลิต}
+ *     {action: 'updateItem',      line_user_id, item_id, <partial fields>}
  *     {action: 'archiveItem', line_user_id, item_id}
  *     {action: 'cancelTransaction', line_user_id, table: 'Stock_In'|'Stock_Out', row: 5}
  *
@@ -47,6 +49,8 @@ function route_(method, query, body) {
 
       case 'POST createItem':         return handleCreateItem_(lineUserId, body);
       case 'POST updateItemPrice':    return handleUpdateItemPrice_(lineUserId, body);
+      case 'POST updateItemYield':    return handleUpdateItemYield_(lineUserId, body);
+      case 'POST updateItem':         return handleUpdateItem_(lineUserId, body);
       case 'POST archiveItem':        return handleArchiveItem_(lineUserId, body);
       case 'POST stockIn':            return handleStockIn_(lineUserId, body);
       case 'POST stockOut':           return handleStockOut_(lineUserId, body);
@@ -80,6 +84,14 @@ function handleCreateItem_(lineUserId, body) {
 function handleUpdateItemPrice_(lineUserId, body) {
   requireOwner_(lineUserId);
   return ok_({ item: updateItemPrice_(body) });
+}
+function handleUpdateItemYield_(lineUserId, body) {
+  requireOwner_(lineUserId);
+  return ok_({ item: updateItemYield_(body) });
+}
+function handleUpdateItem_(lineUserId, body) {
+  requireOwner_(lineUserId);
+  return ok_({ item: updateItem_(body) });
 }
 function handleArchiveItem_(lineUserId, body) {
   requireOwner_(lineUserId);

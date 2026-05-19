@@ -22,6 +22,8 @@ function getBalance_(category) {
       'ประเภท': it['ประเภท'],
       'หน่วย': it['หน่วย'],
       'ขั้นต่ำ': it['ขั้นต่ำ'],
+      'ขนาดบรรจุ': it['ขนาดบรรจุ'] || '',
+      'หน่วยผลผลิต': it['หน่วยผลผลิต'] || '',
       balance: balance,
       isLow: balance <= Number(it['ขั้นต่ำ'] || 0),
     };
@@ -128,12 +130,29 @@ function stockOut_(lineUserId, body) {
   }
 
   const rowNum = getSheet_('Stock_Out').getLastRow();
+  const yieldInfo = computeYield_(item, qty);
   return {
     row: rowNum,
     item_id: itemId,
     'จำนวน': qty,
     balance_after: balanceAfter,
     is_low: balanceAfter <= minStock,
+    yield_qty: yieldInfo.qty,
+    yield_unit: yieldInfo.unit,
+  };
+}
+
+// คำนวณ yield คาดการณ์: floor((qty × 1000) ÷ ขนาดบรรจุ) สมมติ "หน่วย" = kg/L
+// เว้นว่าง 2 field ใน Master_Items = ไม่ใช่ bulk → คืน null
+function computeYield_(item, qty) {
+  const packSize = Number(item['ขนาดบรรจุ']);
+  const yieldUnit = String(item['หน่วยผลผลิต'] || '').trim();
+  if (!packSize || !yieldUnit || isNaN(packSize) || packSize <= 0) {
+    return { qty: null, unit: null };
+  }
+  return {
+    qty: Math.floor((qty * 1000) / packSize),
+    unit: yieldUnit,
   };
 }
 
