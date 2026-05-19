@@ -6,6 +6,7 @@
  *   GET  ?action=me&line_user_id=U...
  *   GET  ?action=items&category=สารสกัด&line_user_id=U...
  *   GET  ?action=balance&category=&line_user_id=U...
+ *   GET  ?action=productionToday&line_user_id=U...
  *   GET  ?action=dailyReport&secret=...   (n8n เท่านั้น)
  *
  *   POST body JSON:
@@ -17,6 +18,9 @@
  *     {action: 'updateItem',      line_user_id, item_id, <partial fields>}
  *     {action: 'archiveItem', line_user_id, item_id}
  *     {action: 'cancelTransaction', line_user_id, table: 'Stock_In'|'Stock_Out', row: 5}
+ *     {action: 'createPlan', line_user_id, batch, สินค้า, เป้า, หน่วยผลผลิต, หมายเหตุ?}
+ *     {action: 'updatePlanResult', line_user_id, plan_id, ผลจริง, ของเสีย?, หมายเหตุ?}
+ *     {action: 'cancelPlan', line_user_id, plan_id}
  *
  * ทุก response คืน HTTP 200 — frontend อ่าน {ok: bool, error?, ...} จาก body
  */
@@ -45,6 +49,7 @@ function route_(method, query, body) {
       case 'GET me':            return handleMe_(lineUserId);
       case 'GET items':         return handleListItems_(lineUserId, query.category);
       case 'GET balance':       return handleBalance_(lineUserId, query.category);
+      case 'GET productionToday': return handleProductionToday_(lineUserId);
       case 'GET dailyReport':   return handleDailyReport_(query.secret);
 
       case 'POST createItem':         return handleCreateItem_(lineUserId, body);
@@ -55,6 +60,10 @@ function route_(method, query, body) {
       case 'POST stockIn':            return handleStockIn_(lineUserId, body);
       case 'POST stockOut':           return handleStockOut_(lineUserId, body);
       case 'POST cancelTransaction':  return handleCancelTransaction_(lineUserId, body);
+
+      case 'POST createPlan':         return handleCreatePlan_(lineUserId, body);
+      case 'POST updatePlanResult':   return handleUpdatePlanResult_(lineUserId, body);
+      case 'POST cancelPlan':         return handleCancelPlan_(lineUserId, body);
 
       default:
         return err_('Unknown action: ' + method + ' ' + action);
@@ -114,6 +123,24 @@ function handleStockOut_(lineUserId, body) {
 function handleCancelTransaction_(lineUserId, body) {
   const user = requireUser_(lineUserId);
   return ok_(cancelTransaction_(user, body));
+}
+
+// ----- Production -----
+function handleProductionToday_(lineUserId) {
+  requireUser_(lineUserId);
+  return ok_({ plans: listProductionToday_() });
+}
+function handleCreatePlan_(lineUserId, body) {
+  const owner = requireOwner_(lineUserId);
+  return ok_({ plan: createPlan_(owner.line_user_id, body) });
+}
+function handleUpdatePlanResult_(lineUserId, body) {
+  requireUser_(lineUserId);
+  return ok_({ plan: updatePlanResult_(lineUserId, body) });
+}
+function handleCancelPlan_(lineUserId, body) {
+  requireOwner_(lineUserId);
+  return ok_({ plan: cancelPlan_(body) });
 }
 
 // ----- B7 dailyReport -----

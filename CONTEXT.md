@@ -99,6 +99,29 @@
 | role | enum | พนักงาน | พนักงาน / เจ้าของ |
 | registered_at | datetime | 2026-05-09 09:00:00 | วันลงทะเบียน |
 
+### Sheet: `Production` (แผน + ผลผลิตรายวัน)
+| Column | Type | ตัวอย่าง | หมายเหตุ |
+|---|---|---|---|
+| plan_id | string | PRD-0001 | auto-generate, unique |
+| timestamp | datetime | 2026-05-19 08:30 | ตอนตั้งเป้า |
+| วันที่ | date | 2026-05-19 | วันที่ผลิต (filter รายงานเย็น) |
+| batch | string | VRD-2605-001 | ผูกกับ Stock_Out.batch |
+| สินค้า | string | เซรั่มโสมแดง 30g | ชื่อสินค้าสำเร็จรูป |
+| เป้า | number | 1000 | จำนวนเป้าผลิต |
+| หน่วยผลผลิต | string | ขวด | ขวด/หลอด/ซอง |
+| ผลจริง | number | 950 | กรอกตอนเย็น |
+| ของเสีย | number | 20 | กรอกตอนเย็น |
+| สถานะ | enum | planned | planned / done / cancelled |
+| หมายเหตุ | string | ฉลากเสีย 20 | optional |
+| owner_id | string | U... | LINE userId คนตั้งเป้า |
+| worker_id | string | U... | LINE userId คนกรอกผล |
+
+**Production rules:**
+- 1 วัน 1 batch มีได้ 1 plan (active) เท่านั้น — กันซ้ำ
+- เจ้าของเท่านั้นที่ตั้งเป้า / ยกเลิก
+- ทั้งเจ้าของและพนักงานกรอกผลจริงได้
+- % บรรลุ = `floor((ผลจริง / เป้า) × 100)` แสดงเฉพาะตอน status=done
+
 ### Sheet: `Logs` (error logs)
 | Column | Type | ตัวอย่าง | หมายเหตุ |
 |---|---|---|---|
@@ -130,7 +153,6 @@
 ## 6. ห้ามทำ (Out of Scope — Phase 1)
 
 ❌ ออก PO อัตโนมัติ (อยู่ใน phase 2)
-❌ บันทึกของเสีย / WIP (Work In Progress) (อยู่ใน phase 2)
 ❌ คำนวณมูลค่าสต็อกรวม / ต้นทุนต่อ batch (อยู่ใน phase 3)
 ❌ เก็บ lot number / วันหมดอายุ (เจ้าของรับความเสี่ยงเอง — note: เสี่ยงสำหรับสารสกัด)
 ❌ Authentication เกินกว่า LINE Login

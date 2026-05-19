@@ -69,11 +69,18 @@ function dailyReport_() {
     };
   });
 
+  // production plans ของวันนี้ — โหลดได้แค่ถ้ามี Sheet (Phase 2 อาจยังไม่ได้สร้าง)
+  let todayProduction = [];
+  try {
+    todayProduction = listProductionToday_();
+  } catch (e) { /* ไม่มี Sheet Production = ข้าม */ }
+
   const result = {
     generated_at: new Date().toISOString(),
     low_items: lowItems,
     categories: categories,
     today_stockout: todayStockOutWithYield_(itemsById),
+    today_production: todayProduction,
   };
 
   try {

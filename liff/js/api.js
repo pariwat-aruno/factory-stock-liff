@@ -44,4 +44,9 @@ export const api = {
   updateItemYield:    (b)               => apiPost('updateItemYield', b),
   updateItem:         (b)               => apiPost('updateItem', b),
   archiveItem:        (item_id)         => apiPost('archiveItem', { item_id }),
+
+  productionToday:    ()                => apiGet('productionToday'),
+  createPlan:         (b)               => apiPost('createPlan', b),
+  updatePlanResult:   (b)               => apiPost('updatePlanResult', b),
+  cancelPlan:         (plan_id)         => apiPost('cancelPlan', { plan_id }),
 };

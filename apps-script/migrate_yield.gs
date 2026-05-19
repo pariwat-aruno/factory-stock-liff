@@ -30,13 +30,67 @@ function migrateAddYieldColumns() {
     .setFontWeight('bold')
     .setBackground('#f1f3f4');
 
-  // seed ตัวอย่างให้ ITM-005 (ขวดปั๊ม 30ml) — แสดงว่า "ขนาดบรรจุ" เป็น meta สำหรับสินค้าที่ใส่ขวด
-  // แต่ขวดปั๊มเอง = packaging ไม่ใช่ bulk → ไม่กรอก
-  // → เว้นว่างหมด ให้พี่กรอกเอาเองทีหลังตอน admin
+  // ⚠️ Google Sheet inherit data validation จาก column ขวา (สถานะ: active/archived)
+  // ไปยัง 2 column ใหม่ที่ insert → ต้อง clear ออก ไม่งั้น setValue ค่าอื่นจะถูก reject
+  sheet.getRange(2, statusCol, sheet.getMaxRows() - 1, 2).clearDataValidations();
 
   sheet.autoResizeColumns(statusCol, 2);
   Logger.log('migrate done — added 2 columns at col ' + statusCol);
   return 'migrate done — added 2 columns at col ' + statusCol;
+}
+
+/**
+ * สร้าง Sheet "Production" — Phase 2 feature: ตั้งเป้า + บันทึกผลผลิตรายวัน
+ *
+ * รันใน editor ครั้งเดียว (idempotent: ถ้า sheet มีอยู่แล้ว skip)
+ */
+function createProductionSheet() {
+  const ss = getSS_();
+  if (ss.getSheetByName('Production')) {
+    Logger.log('skip — Sheet "Production" exists already');
+    return 'already exists';
+  }
+  const sheet = ss.insertSheet('Production');
+  const headers = [
+    'plan_id', 'timestamp', 'วันที่', 'batch', 'สินค้า',
+    'เป้า', 'หน่วยผลผลิต', 'ผลจริง', 'ของเสีย',
+    'สถานะ', 'หมายเหตุ', 'owner_id', 'worker_id',
+  ];
+  sheet.getRange(1, 1, 1, headers.length)
+    .setValues([headers])
+    .setFontWeight('bold')
+    .setBackground('#f1f3f4');
+  sheet.setFrozenRows(1);
+
+  // validation ที่ "สถานะ" col 10 — เฉพาะ planned/done/cancelled
+  const statusRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['planned', 'done', 'cancelled'], true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 10, sheet.getMaxRows() - 1, 1).setDataValidation(statusRule);
+
+  sheet.autoResizeColumns(1, headers.length);
+  Logger.log('Production sheet created');
+  return 'created';
+}
+
+/**
+ * Fix data validation ของ 2 column "ขนาดบรรจุ" + "หน่วยผลผลิต"
+ * — ใช้ตอนรัน migrate รุ่นเก่าที่ลืม clear validation
+ * — รันใน editor: เลือก fixYieldColumnsValidation → ▶ Run
+ * — Idempotent: รันซ้ำได้ ไม่กระทบข้อมูล
+ */
+function fixYieldColumnsValidation() {
+  const sheet = getSheet_('Master_Items');
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const packCol = headers.indexOf('ขนาดบรรจุ') + 1;
+  const yUnitCol = headers.indexOf('หน่วยผลผลิต') + 1;
+  if (packCol < 1 || yUnitCol < 1) throw new Error('ยังไม่ได้รัน migrateAddYieldColumns');
+
+  sheet.getRange(2, packCol, sheet.getMaxRows() - 1, 1).clearDataValidations();
+  sheet.getRange(2, yUnitCol, sheet.getMaxRows() - 1, 1).clearDataValidations();
+  Logger.log('cleared validation at col ' + packCol + ' + ' + yUnitCol);
+  return 'fixed — cleared validation at col ' + packCol + ' + ' + yUnitCol;
 }
 
 /**

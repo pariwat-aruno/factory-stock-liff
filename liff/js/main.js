@@ -3,16 +3,18 @@ import { api } from './api.js';
 import { CONFIG } from './config.js';
 import { toast, el } from './utils.js';
 
-import { renderStockIn }  from './pages/stockIn.js';
-import { renderStockOut } from './pages/stockOut.js';
-import { renderBalance }  from './pages/balance.js';
-import { renderAdmin }    from './pages/admin.js';
+import { renderStockIn }    from './pages/stockIn.js';
+import { renderStockOut }   from './pages/stockOut.js';
+import { renderProduction } from './pages/production.js';
+import { renderBalance }    from './pages/balance.js';
+import { renderAdmin }      from './pages/admin.js';
 
 const PAGES = {
-  stockIn:  { render: renderStockIn,  icon: '📥', label: 'รับเข้า' },
-  stockOut: { render: renderStockOut, icon: '📤', label: 'เบิก' },
-  balance:  { render: renderBalance,  icon: '📊', label: 'ยอด' },
-  admin:    { render: renderAdmin,    icon: '⚙️', label: 'Admin' },
+  stockIn:    { render: renderStockIn,    icon: '📥', label: 'รับเข้า' },
+  stockOut:   { render: renderStockOut,   icon: '📤', label: 'เบิก' },
+  production: { render: renderProduction, icon: '🏭', label: 'ผลิต' },
+  balance:    { render: renderBalance,    icon: '📊', label: 'ยอด' },
+  admin:      { render: renderAdmin,      icon: '⚙️', label: 'Admin' },
 };
 
 async function boot() {
